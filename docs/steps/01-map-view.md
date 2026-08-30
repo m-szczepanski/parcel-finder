@@ -1,7 +1,7 @@
 # 01 — Map view
 
 **Depends on:** nothing (first step)
-**Status:** not started
+**Status:** done
 
 ## Goal
 
@@ -20,22 +20,22 @@ deps are wired but no map renders.
 
 ## Tasks
 
-- [ ] `src/components/map/MapView.tsx`: `MapContainer` (react-leaflet v5) centered on a default
+- [x] `src/components/map/MapView.tsx`: `MapContainer` (react-leaflet v5) centered on a default
       location (e.g. Warsaw, `52.23, 21.01`, zoom 15) with an OSM `TileLayer`.
-- [ ] OSM attribution string on the tile layer (required by OSM usage policy):
+- [x] OSM attribution string on the tile layer (required by OSM usage policy):
       `&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors`.
-- [ ] Grab the `L.Map` instance via the `ref` prop (react-leaflet v5 API) and expose it so
+- [x] Grab the `L.Map` instance via the `ref` prop (react-leaflet v5 API) and expose it so
       `useViewportData` (step 02) can read bounds/zoom later.
-- [ ] App layout: map fills the viewport; leave a placeholder slot where the step-05 side panel
+- [x] App layout: map fills the viewport; leave a placeholder slot where the step-05 side panel
       will live (the final panel is a click-driven `Sheet` sliding in from the right, so this
       shell is expected to be replaced or removed in step 05).
-- [ ] Persist last map center/zoom to `localStorage` and restore on load as a fallback
+- [x] Persist last map center/zoom to `localStorage` and restore on load as a fallback
       (docs: "last known / default location").
-- [ ] On load, request browser geolocation (`navigator.geolocation.getCurrentPosition`, short
+- [x] On load, request browser geolocation (`navigator.geolocation.getCurrentPosition`, short
       timeout, denial handled silently): if permitted, center the map on the user's location;
       otherwise fall back to last-known (localStorage), then the Warsaw default.
       (A "regional default" beyond this chain is out of scope for v1; revisit if wanted.)
-- [ ] Verify StrictMode double-mount does not produce "Map container is already initialized"
+- [x] Verify StrictMode double-mount does not produce "Map container is already initialized"
       (react-leaflet v5 handles this; confirm explicitly).
 
 ## Implementation notes
@@ -49,11 +49,11 @@ deps are wired but no map renders.
 
 ## Exit criteria
 
-- [ ] `npm run dev` shows a pan/zoomable OSM map in dark-themed chrome with attribution visible.
-- [ ] With geolocation permitted, the map centers on the user's location on load.
-- [ ] With geolocation denied/unavailable, the last position is restored; with no history, the
+- [x] `npm run dev` shows a pan/zoomable OSM map in dark-themed chrome with attribution visible.
+- [x] With geolocation permitted, the map centers on the user's location on load.
+- [x] With geolocation denied/unavailable, the last position is restored; with no history, the
       map opens on Warsaw.
-- [ ] lint / typecheck / test / build all green.
+- [x] lint / typecheck / test / build all green.
 
 ## Files touched
 
