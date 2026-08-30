@@ -70,7 +70,6 @@ public/
 └── robots.txt
 index.html
 vite.config.ts
-tailwind.config.js
 postcss.config.js
 tsconfig.json
 ```
