@@ -32,7 +32,7 @@ There is **no dependency on official cadastral registries**. All spatial data is
 
 ## 2. Core User Flow
 
-```
+```text
 Open app → Map loads (geolocation if permitted → last known → default: Warsaw)
    → User pans/zooms to an area of interest
    → App fetches OSM data (buildings + landuse) for current viewport
@@ -73,7 +73,7 @@ Open app → Map loads (geolocation if permitted → last known → default: War
 
 ### 4.1 Runtime dependencies
 
-```
+```text
 react
 react-dom
 react-leaflet
@@ -90,7 +90,7 @@ lucide-react
 
 shadcn/ui is not installed as a single package — components are generated into the project source via its CLI, backed by Radix UI primitives. Relevant Radix packages get added automatically per component used, e.g.:
 
-```
+```text
 @radix-ui/react-dialog
 @radix-ui/react-tooltip
 @radix-ui/react-toggle
@@ -99,7 +99,7 @@ shadcn/ui is not installed as a single package — components are generated into
 
 ### 4.3 Dev dependencies
 
-```
+```text
 typescript
 vite
 @vitejs/plugin-react
@@ -114,7 +114,7 @@ tailwindcss (postcss + autoprefixer)
 
 ### 4.4 Optional (backend proxy, if used)
 
-```
+```text
 express
 node-fetch (or native fetch on modern Node)
 cors
@@ -137,26 +137,26 @@ cors
 
 ## 6. Architecture Overview
 
-```
-┌─────────────────────────────────────────────┐
-│                  React App                    │
-│  ┌───────────────┐   ┌─────────────────────┐ │
-│  │   Map Panel    │   │  Side panel (Sheet) │ │
-│  │  (Leaflet map) │──▶│  site details sheet │ │
-│  └───────┬────────┘   └─────────────────────┘ │
-│          │ hover/click (per-feature)          │
-│          ▼                                     │
-│  ┌────────────────────────┐                    │
+```text
+┌─────────────────────────────────────────────────┐
+│                  React App                      │
+│  ┌───────────────┐   ┌─────────────────────┐    │
+│  │   Map Panel    │   │  Side panel (Sheet) │   │
+│  │  (Leaflet map) │──▶│  site details sheet │   │
+│  └───────┬────────┘   └─────────────────────┘   │
+│          │ hover/click (per-feature)            │
+│          ▼                                      │
+│  ┌────────────────────────┐                     │
 │  │ GeoJSON "free land"     │                    │
 │  │ layer (computed)        │                    │
 │  └───────────┬─────────────┘                    │
 │              │ turf.difference(landuse, bldgs)  │
 │              ▼                                  │
 │  ┌────────────────────────┐                     │
-│  │ Overpass fetch (bbox,   │                     │
-│  │ debounced on moveend)   │                     │
-│  └───────────┬─────────────┘                     │
-└──────────────┼────────────────────────────────────┘
+│  │ Overpass fetch (bbox,   │                    │
+│  │ debounced on moveend)   │                    │
+│  └───────────┬─────────────┘                    │
+└──────────────┼──────────────────────────────────┘
                ▼
      (optional) caching proxy ──▶ Overpass API
 ```

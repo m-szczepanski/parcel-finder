@@ -25,9 +25,18 @@ geometry step. Implements Milestone 2 (data fetch) including debounce and zoom g
 - [ ] `fetchOverpassData(bounds: ViewportBounds)`: GET to
       `https://overpass-api.de/api/interpreter?data=<encoded query>`, 25 s timeout via
       `AbortSignal.timeout`, throw on `!response.ok`, return parsed JSON.
-- [ ] `overpassToGeoJSON(elements)` mapper in `lib/overpass.ts`: - closed ways (first point == last point, >= 4 points) with `building` / `landuse` /
-      `natural` / `leisure` tags -> Polygon features; - skip open ways; skip relations for v1 (note as limitation); - keep `id` (`way/123`) and raw `tags` in feature properties.
-- [ ] Rework `useViewportData(map)`: - subscribe to `moveend`/`zoomend` via the map instance from step 01; - debounce ~500 ms (hand-rolled `setTimeout` in an effect, no new dep); - gate on `zoom >= MIN_ZOOM` (15) — below it, return empty data + a `belowMinZoom` flag; - guard against stale responses (request id ref or `AbortController`); - expose `{ data, loading, error, belowMinZoom }`.
+- [ ] `overpassToGeoJSON(elements)` mapper in `lib/overpass.ts`:
+  - closed ways (first point == last point, >= 4 points) with `building` / `landuse` /
+    `natural` / `leisure` tags -> Polygon features;
+  - skip open ways;
+  - skip relations for v1 (note as limitation);
+  - keep `id` (`way/123`) and raw `tags` in feature properties.
+- [ ] Rework `useViewportData(map)`:
+  - subscribe to `moveend`/`zoomend` via the map instance from step 01;
+  - debounce ~500 ms (hand-rolled `setTimeout` in an effect, no new dep);
+  - gate on `zoom >= MIN_ZOOM` (15) — below it, return empty data + a `belowMinZoom` flag;
+  - guard against stale responses (request id ref or `AbortController`);
+  - expose `{ data, loading, error, belowMinZoom }`.
 - [ ] Log/inspect fetched counts per bbox during development (temporary debug output).
 
 ## Implementation notes

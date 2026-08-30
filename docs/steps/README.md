@@ -5,7 +5,7 @@ parallel once the core chain (01-05) is done.
 
 ## Order and dependencies
 
-```
+```text
 01 Map view ──► 02 Overpass pipeline ──► 03 Free-land geometry ──► 04 Free-land layer ──► 05 Side panel
                                                         │
 06 Basemap toggle ──────────────────────────────────────┤ (needs 01)

@@ -5,7 +5,7 @@
 
 ## 1. Project Structure
 
-```md
+```text
 parcel-finder/
 ├── src/
 │   ├── main.tsx                  # app entry point
@@ -17,7 +17,7 @@ parcel-finder/
 │   │   │   └── FreeLandLayer.tsx # renders computed GeoJSON, hover styling + click selection
 │   │   ├── sidebar/
 │   │   │   ├── SiteDetails.tsx   # shadcn Sheet (right side) with selected site data
-│   │   │   └── EmptyState.tsx    # shown when nothing is hovered
+│   │   │   └── EmptyState.tsx    # shown when nothing is selected
 │   │   └── ui/                   # shadcn/ui generated components (button, card, sheet, etc.)
 │   ├── lib/
 │   │   ├── overpass.ts           # Overpass API query builder + fetch
@@ -44,7 +44,7 @@ Rationale: `lib/` holds pure, testable functions with no React dependency (query
 
 ## 2. Data Flow (Detailed)
 
-```
+```text
 1. Map moveend/zoomend fires
         │
 2. useViewportData hook: debounce (~500ms), check zoom ≥ MIN_ZOOM
@@ -90,7 +90,7 @@ Rationale: `lib/` holds pure, testable functions with no React dependency (query
 
 Query is built dynamically from the current bounding box. Example shape (illustrative, not final):
 
-```
+```text
 [out:json][timeout:25];
 (
   way["building"]({{bbox}});
@@ -190,9 +190,7 @@ Key points:
 
 If direct client-side Overpass calls prove flaky (public instance rate limits, CORS), `server/index.ts` exposes a single route:
 
-```
-GET /api/overpass?bbox=<south,west,north,east>
-```
+`GET /api/overpass?bbox=<south,west,north,east>`
 
 which forwards the query server-side, applies basic response caching, and returns JSON to the client. This is intentionally minimal — no database, no auth, since it's a personal tool.
 
@@ -243,7 +241,7 @@ If the app grows (saved sites, filters, settings persisted across sessions), a l
 
 ## 7. Environment & Config
 
-```
+```text
 # .env (if backend proxy is used)
 OVERPASS_API_URL=https://overpass-api.de/api/interpreter
 PORT=3001

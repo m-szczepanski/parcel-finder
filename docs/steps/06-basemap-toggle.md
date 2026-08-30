@@ -17,9 +17,11 @@ Milestone 5. Small, self-contained UI feature.
 
 - [ ] `src/components/map/BasemapToggle.tsx`: two-state control (shadcn `Toggle` or a small
       segmented pair of `Button`s) floating over the map corner (absolute positioning).
-- [ ] Switch `TileLayer` `url` + `attribution` between: - OSM standard (as in step 01); - Esri World Imagery:
-      `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`
-      with Esri attribution (Esri requires attribution too — keep it visible).
+- [ ] Switch `TileLayer` `url` + `attribution` between:
+  - OSM standard (as in step 01)
+  - Esri World Imagery:
+    - URL: `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`
+    - Attribution: Esri requires attribution too — keep it visible.
 - [ ] Remount the tile layer on switch (changing `key`) — react-leaflet does not hot-swap URLs.
 - [ ] Persist the choice in `localStorage` alongside the map position from step 01.
 
