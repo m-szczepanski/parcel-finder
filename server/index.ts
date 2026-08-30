@@ -4,6 +4,19 @@ import cors from 'cors';
 const app = express();
 const port = Number(process.env.PORT ?? 3001);
 
+const buildOverpassQuery = (bbox: string) => `
+  [out:json][timeout:25];
+  (
+    way["building"](${bbox});
+    way["landuse"](${bbox});
+    way["natural"](${bbox});
+    way["leisure"](${bbox});
+  );
+  out body geom;
+  >;
+  out skel qt;
+`;
+
 app.use(cors());
 
 app.get('/api/overpass', async (req, res) => {
@@ -16,18 +29,7 @@ app.get('/api/overpass', async (req, res) => {
 
   try {
     const response = await fetch(
-      `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(`
-      [out:json][timeout:25];
-      (
-        way["building"](${bbox});
-        way["landuse"](${bbox});
-        way["natural"](${bbox});
-        way["leisure"](${bbox});
-      );
-      out body geom;
-      >;
-      out skel qt;
-    `)}`,
+      `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(buildOverpassQuery(bbox))}`,
     );
 
     if (!response.ok) {
