@@ -47,3 +47,6 @@ coverage/
 # Server (optional backend proxy)
 server/node_modules/
 server/dist/
+
+# Agentic related
+.opencode/
