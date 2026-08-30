@@ -15,6 +15,6 @@ export function buildOverpassQuery(bounds: ViewportBounds): string {
   `.trim();
 }
 
-export async function fetchOverpassData(): Promise<{ elements: [] }> {
+export async function fetchOverpassData(): Promise<{ elements: unknown[] }> {
   return { elements: [] };
 }

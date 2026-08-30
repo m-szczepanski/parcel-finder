@@ -14,26 +14,31 @@ app.get('/api/overpass', async (req, res) => {
     return;
   }
 
-  const response = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(`
-    [out:json][timeout:25];
-    (
-      way["building"](${bbox});
-      way["landuse"](${bbox});
-      way["natural"](${bbox});
-      way["leisure"](${bbox});
-    );
-    out body geom;
-    >;
-    out skel qt;
-  `)}`);
+  try {
+    const response = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(`
+      [out:json][timeout:25];
+      (
+        way["building"](${bbox});
+        way["landuse"](${bbox});
+        way["natural"](${bbox});
+        way["leisure"](${bbox});
+      );
+      out body geom;
+      >;
+      out skel qt;
+    `)}`);
 
-  if (!response.ok) {
+    if (!response.ok) {
+      res.status(502).json({ error: 'Overpass request failed' });
+      return;
+    }
+
+    const json = await response.json();
+    res.json(json);
+  } catch (error) {
+    console.error('Overpass request failed:', error);
     res.status(502).json({ error: 'Overpass request failed' });
-    return;
   }
-
-  const json = await response.json();
-  res.json(json);
 });
 
 app.listen(port, () => {

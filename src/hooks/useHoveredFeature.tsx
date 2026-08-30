@@ -10,7 +10,9 @@ export function HoveredFeatureProvider({ children }: { children: ReactNode }) {
   const [hoveredFeature, setHoveredFeature] = useState<HoveredFeatureState>(null);
   const value = useMemo(() => ({ hoveredFeature, setHoveredFeature }), [hoveredFeature]);
 
-  return children as any;
+  return (
+    <HoveredFeatureContext.Provider value={value}>{children}</HoveredFeatureContext.Provider>
+  );
 }
 
 export function useHoveredFeature() {
