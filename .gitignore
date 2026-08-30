@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+dist-ssr/
+build/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Vite
+.vite/
+
+# Emitted config artifacts (from tsc -b / composite tsconfig.node.json)
+vite.config.js
+vite.config.d.ts
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage/
+
+# Cache (if using IndexedDB export / local cache dumps for debugging)
+.cache/
+
+# Server (optional backend proxy)
+server/node_modules/
+server/dist/
