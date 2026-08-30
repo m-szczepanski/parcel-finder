@@ -7,7 +7,12 @@ export function computeFreeLand(): CandidateSiteFeatureCollection {
   };
 }
 
-export function normalizeViewportBounds(bounds: { south: number; west: number; north: number; east: number }) {
+export function normalizeViewportBounds(bounds: {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}) {
   return {
     ...bounds,
     south: Math.min(bounds.south, bounds.north),
