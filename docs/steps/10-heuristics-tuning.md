@@ -18,9 +18,10 @@ guesses, and centralize the knobs so tuning is a config change, not a code hunt.
 
 - [ ] Extract tuning knobs into one module (e.g. `lib/config.ts`): `QUERY_TAGS`, `MIN_ZOOM`,
       `MIN_AREA_M2`, classify/exclude tables — each with a one-line rationale comment.
-- [ ] Experiment: what counts as "free land"? Test at least these policies over a known area: - only buildings subtracted, all landuse kept (most permissive); - exclude water/forest/park/protected (`natural=water|wood`, `leisure=park`,
-      `boundary=protected_area`) — probably correct for "undeveloped land";
-      record which policy feels right and set it as default.
+- [ ] Validate the decided empty/taken policy over a known area (product decision, app doc
+      section 8): forests (`natural=wood`), water, parks/protected are **taken**; fields/unused
+      ground are **empty**. Tune the edge categories (e.g. orchards, quarries, cemeteries,
+      scrub vs. park) and record any changes.
 - [ ] Tune `MIN_ZOOM` against response size and latency: compare zoom 14 vs 15 vs 16 on the
       same city area (bytes, elements count, seconds). Pick and record.
 - [ ] Tune `MIN_AREA_M2`: sample the smallest polygons that are still meaningful on screen;

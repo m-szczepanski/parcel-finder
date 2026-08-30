@@ -12,18 +12,18 @@ toasts on failure, loading feedback, zoom hint, and distinct empty states.
 
 - `useViewportData` returns `{ data, loading, error, belowMinZoom }` (after step 02).
 - shadcn `sonner` component generated but `<Toaster />` not mounted anywhere yet.
-- `EmptyState.tsx` (step 05) has the no-hover variant.
+- `EmptyState.tsx` (step 05) has the no-selection variant.
 
 ## Tasks
 
 - [ ] Mount `<Toaster />` (sonner) in `App` and fire `toast.error` when an Overpass fetch fails,
       keeping the last successful layer visible (no blank map on failure).
-- [ ] Loading indicator: small spinner/badge overlaid on the map (or sidebar header) while
+- [ ] Loading indicator: small spinner/badge overlaid on the map (or panel header) while
       `loading` is true — must not block interaction.
 - [ ] Below-min-zoom hint: centered overlay "zoom in to see candidate sites" when
       `belowMinZoom`; free-land layer hidden (handled in step 04).
-- [ ] Sidebar empty-state variant for "no candidate land in this area" — distinct from
-      "nothing hovered" so the user can tell data-absence from inaction.
+- [ ] Side panel empty-state variant for "no candidate land in this area" — distinct from
+      "nothing selected" so the user can tell data-absence from inaction.
 - [ ] Rate-limit handling: on repeated failures surface a calmer message suggesting waiting,
       rather than error-spamming (simple failure counter is enough).
 

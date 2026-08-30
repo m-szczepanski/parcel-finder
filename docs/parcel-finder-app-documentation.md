@@ -9,10 +9,12 @@ Parcel Finder is a web application that helps a user visually discover **likely 
 
 The core interaction is exploratory, not query-based:
 
-1. The user opens the app and is shown an interactive map (OpenStreetMap-based, satellite toggle available).
-2. The user navigates to a location of interest.
-3. As the user moves the mouse over the map, any polygon representing land classified as likely empty (no buildings, no obvious development) is **highlighted on hover**.
-4. When a polygon is highlighted, a **sidebar panel** shows available data about it — e.g. land-use type, estimated area, and (optionally) a nearby address.
+1. The user opens the app and is shown an interactive map (OpenStreetMap-based, satellite toggle available), centered on **their current location** when browser geolocation is available, falling back to a default point (Warsaw) otherwise.
+2. The user navigates to a location of interest. Site inspection (hover/click) unlocks only above a minimum zoom level.
+3. As the user moves the mouse over the map, the app classifies the site under the cursor: **empty** (field / unused ground — no buildings, no forest, no water or other developed cover) or **taken** (buildings present, forest, water, etc.).
+4. Hovering an **empty** site highlights it — its borders and entire content turn **transparent gray**. Hovering a **taken** site produces no visual effect.
+5. Clicking a site opens a **side panel** sliding in from the right edge with calculated properties (land-use type, estimated area, and optionally a nearby address). For a **taken** site the panel clearly states that it is taken, alongside the available properties.
+6. Clicking the map background closes the panel.
 
 There is **no dependency on official cadastral registries**. All spatial data is sourced from OpenStreetMap, computed client-side (or via a thin caching proxy) using open geometry tooling. The identified "free sites" are therefore a **heuristic approximation**, not a legal/cadastral statement — this is explicitly a discovery/exploration tool, not a source of truth for property boundaries or ownership.
 
@@ -31,15 +33,19 @@ There is **no dependency on official cadastral registries**. All spatial data is
 ## 2. Core User Flow
 
 ```
-Open app → Map loads (last known / default location)
+Open app → Map loads (geolocation if permitted → last known → default: Warsaw)
    → User pans/zooms to an area of interest
    → App fetches OSM data (buildings + landuse) for current viewport
       (only above a minimum zoom level, debounced, cached per bbox)
-   → App computes "candidate free land" polygons
-      (landuse/landcover polygons minus building footprints)
-   → Polygons rendered as an interactive GeoJSON layer
-   → On mouseover: polygon highlights, sidebar updates with its data
-   → On mouseout: polygon returns to default style
+   → App computes and classifies site polygons
+      (landuse/landcover minus building footprints = "empty";
+       buildings, forest, water, parks = "taken")
+   → Empty sites rendered as an interactive GeoJSON layer
+   → On mouseover (empty sites only): polygon turns transparent gray
+   → On mouseout: highlight reverts
+   → On click (empty site): side panel slides in from the right with computed properties
+   → On click (taken site): side panel opens with a "taken" notice + available properties
+   → Click on map background: panel closes
 ```
 
 ## 3. Tech Stack
@@ -49,7 +55,7 @@ Open app → Map loads (last known / default location)
 | Language                 | TypeScript                                     | type safety across map/geometry code                                                           |
 | Framework                | React 18+                                      | component model, large ecosystem                                                               |
 | Build tool               | Vite                                           | fast dev server, minimal config                                                                |
-| UI components            | shadcn/ui                                      | accessible, unstyled-by-default components (sidebar, cards, toggles, dialogs)                  |
+| UI components            | shadcn/ui                                      | accessible, unstyled-by-default components (right-side sheet panel, cards, toggles, dialogs)   |
 | Styling                  | Tailwind CSS                                   | required by / pairs with shadcn/ui                                                             |
 | Icons                    | lucide-react                                   | ships alongside shadcn/ui by convention                                                        |
 | Mapping library          | Leaflet + react-leaflet                        | free, no API key, mature plugin ecosystem, native per-feature hover events                     |
@@ -57,7 +63,7 @@ Open app → Map loads (last known / default location)
 | Imagery toggle           | Esri World Imagery (free XYZ tiles)            | visual sanity-check for "is this really empty?"                                                |
 | Spatial data source      | Overpass API                                   | buildings (`building=*`) and landuse/landcover (`landuse=*`, `natural=*`) for current viewport |
 | Geometry engine          | Turf.js                                        | `difference`, `area`, `bbox`, optionally `booleanPointInPolygon`                               |
-| Geocoding (optional)     | Nominatim (OSM)                                | reverse-geocode a nearby address for the sidebar                                               |
+| Geocoding (optional)     | Nominatim (OSM)                                | reverse-geocode a nearby address for the side panel                                            |
 | Backend (optional, thin) | Node.js + Express (or a serverless function)   | proxies/caches Overpass requests to avoid CORS and client-side rate-limit issues               |
 | State management         | React state / Context (or Zustand if it grows) | no need for Redux at this scale                                                                |
 | Package manager          | pnpm (or npm)                                  | personal preference, pnpm is fast and disk-efficient                                           |
@@ -118,12 +124,12 @@ cors
 
 ## 5. Data Sources
 
-| Source                     | Purpose                                          | Auth required | Notes                                                                                          |
-| -------------------------- | ------------------------------------------------ | ------------- | ---------------------------------------------------------------------------------------------- |
-| OpenStreetMap tile servers | Base map tiles                                   | No            | Standard OSM tile usage policy applies (reasonable request volume)                             |
-| Esri World Imagery         | Satellite basemap toggle                         | No            | Free XYZ tile endpoint                                                                         |
-| Overpass API               | Building + landuse polygons for current viewport | No            | Public instances are rate-limited; a self-hosted or cached proxy is recommended if usage grows |
-| Nominatim                  | Reverse geocoding for sidebar address (optional) | No            | Usage policy limits request rate; cache results                                                |
+| Source                     | Purpose                                             | Auth required | Notes                                                                                          |
+| -------------------------- | --------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------- |
+| OpenStreetMap tile servers | Base map tiles                                      | No            | Standard OSM tile usage policy applies (reasonable request volume)                             |
+| Esri World Imagery         | Satellite basemap toggle                            | No            | Free XYZ tile endpoint                                                                         |
+| Overpass API               | Building + landuse polygons for current viewport    | No            | Public instances are rate-limited; a self-hosted or cached proxy is recommended if usage grows |
+| Nominatim                  | Reverse geocoding for side panel address (optional) | No            | Usage policy limits request rate; cache results                                                |
 
 **No connection to official cadastral/geoportal services (e.g. GUGiK WMS/WFS) is used in this version.** This is a deliberate scope decision to keep the app data-source-simple and key-free; it can be revisited later if legally accurate parcel boundaries become a goal.
 
@@ -135,10 +141,10 @@ cors
 ┌─────────────────────────────────────────────┐
 │                  React App                    │
 │  ┌───────────────┐   ┌─────────────────────┐ │
-│  │   Map Panel    │   │   Sidebar (shadcn)  │ │
-│  │  (Leaflet map) │──▶│  site details view  │ │
+│  │   Map Panel    │   │  Side panel (Sheet) │ │
+│  │  (Leaflet map) │──▶│  site details sheet │ │
 │  └───────┬────────┘   └─────────────────────┘ │
-│          │ hover events (per-feature)          │
+│          │ hover/click (per-feature)          │
 │          ▼                                     │
 │  ┌────────────────────────┐                    │
 │  │ GeoJSON "free land"     │                    │
@@ -157,15 +163,15 @@ cors
 
 ## 7. Build Milestones
 
-1. **Skeleton** — Vite + React + TS project, Tailwind + shadcn/ui set up, Leaflet map rendering with OSM base tiles.
+1. **Skeleton** — Vite + React + TS project, Tailwind + shadcn/ui set up, Leaflet map rendering with OSM base tiles, centered on the user's geolocation (fallback: last known, then Warsaw).
 2. **Data fetch** — Overpass query wired to map viewport (`moveend`), debounced, gated by minimum zoom.
 3. **Geometry computation** — buildings subtracted from landuse polygons via Turf, rendered as a GeoJSON layer.
-4. **Interaction** — hover highlight + sidebar data panel (shadcn `Sheet`/`Card`) showing land-use type, computed area, optional nearest address.
+4. **Interaction** — transparent-gray hover highlight on empty sites only (taken sites get no hover effect); clicking a site opens a right-side panel (shadcn `Sheet`) with land-use type, computed area, optional nearest address; clicked taken sites show a "taken" notice plus their available properties.
 5. **Polish** — satellite imagery toggle, bbox-based caching, loading/error states, basic empty-state handling.
 6. **Stretch goals** — subdivision suggestion logic, saved/favorited sites (local storage), shareable links to a given map view.
 
 ## 8. Open Questions / Decisions To Revisit
 
-- Should "free land" heuristics also exclude protected/natural areas (parks, forests, water) or only buildings? (Affects Overpass query tags and the `difference` logic.)
+- **Resolved:** forests, water, and parks/protected areas count as **taken**, not empty — "empty" is limited to fields and unused ground (farmland, meadow, grass, scrub, brownfield, etc.). Buildings are taken by definition. Taken sites are not hover-highlighted, but clicking one still opens the panel with a taken notice. (Affects Overpass tags and classification; tuning of edge categories continues in step 10.)
 - Minimum zoom level to trigger Overpass fetches — needs tuning against Overpass rate limits and UX responsiveness.
 - Whether a backend proxy is needed for v1, or whether direct client-side Overpass calls are sufficient for personal use.

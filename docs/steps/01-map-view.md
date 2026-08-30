@@ -6,8 +6,9 @@
 ## Goal
 
 Replace the placeholder `App.tsx` with the real layout: a full-screen Leaflet map rendering
-OpenStreetMap tiles plus a sidebar shell. This completes Milestone 1 ("Skeleton") from the
-app documentation, which is currently only partially true — deps are wired but no map renders.
+OpenStreetMap tiles plus a placeholder slot for the step-05 side panel. This completes
+Milestone 1 ("Skeleton") from the app documentation, which is currently only partially true —
+deps are wired but no map renders.
 
 ## Current state
 
@@ -25,10 +26,15 @@ app documentation, which is currently only partially true — deps are wired but
       `&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors`.
 - [ ] Grab the `L.Map` instance via the `ref` prop (react-leaflet v5 API) and expose it so
       `useViewportData` (step 02) can read bounds/zoom later.
-- [ ] App layout: map fills the viewport; sidebar shell (fixed panel on the right, `w-80`-ish)
-      rendered from `src/components/sidebar/` (placeholder content is fine until step 05).
-- [ ] Persist last map center/zoom to `localStorage` and restore on load (docs: "last known /
-      default location"); fall back to the default location when absent.
+- [ ] App layout: map fills the viewport; leave a placeholder slot where the step-05 side panel
+      will live (the final panel is a click-driven `Sheet` sliding in from the right, so this
+      shell is expected to be replaced or removed in step 05).
+- [ ] Persist last map center/zoom to `localStorage` and restore on load as a fallback
+      (docs: "last known / default location").
+- [ ] On load, request browser geolocation (`navigator.geolocation.getCurrentPosition`, short
+      timeout, denial handled silently): if permitted, center the map on the user's location;
+      otherwise fall back to last-known (localStorage), then the Warsaw default.
+      (A "regional default" beyond this chain is out of scope for v1; revisit if wanted.)
 - [ ] Verify StrictMode double-mount does not produce "Map container is already initialized"
       (react-leaflet v5 handles this; confirm explicitly).
 
@@ -44,7 +50,9 @@ app documentation, which is currently only partially true — deps are wired but
 ## Exit criteria
 
 - [ ] `npm run dev` shows a pan/zoomable OSM map in dark-themed chrome with attribution visible.
-- [ ] Reloading the app restores the last map position.
+- [ ] With geolocation permitted, the map centers on the user's location on load.
+- [ ] With geolocation denied/unavailable, the last position is restored; with no history, the
+      map opens on Warsaw.
 - [ ] lint / typecheck / test / build all green.
 
 ## Files touched

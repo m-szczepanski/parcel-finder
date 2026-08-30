@@ -6,7 +6,7 @@ parallel once the core chain (01-05) is done.
 ## Order and dependencies
 
 ```
-01 Map view ──► 02 Overpass pipeline ──► 03 Free-land geometry ──► 04 Free-land layer ──► 05 Sidebar details
+01 Map view ──► 02 Overpass pipeline ──► 03 Free-land geometry ──► 04 Free-land layer ──► 05 Side panel
                                                         │
 06 Basemap toggle ──────────────────────────────────────┤ (needs 01)
 07 Viewport caching ────────────────────────────────────┤ (needs 02)
@@ -16,6 +16,10 @@ parallel once the core chain (01-05) is done.
 11 Docs and repo hygiene ───────────────────────────────┘ (anytime, do before closing the milestone)
 ```
 
+Interaction model (product decision): hover highlights **empty** sites only (transparent gray);
+clicking a site opens a side panel from the right — taken sites (buildings, forest, water) show
+a "taken" notice in the same panel instead of any hover effect.
+
 ## Status
 
 | Step | Feature                | Status           |
@@ -24,7 +28,7 @@ parallel once the core chain (01-05) is done.
 | 02   | Overpass data pipeline | not started      |
 | 03   | Free-land geometry     | not started      |
 | 04   | Free-land layer        | not started      |
-| 05   | Sidebar details        | not started      |
+| 05   | Side panel (Sheet)     | not started      |
 | 06   | Basemap toggle         | not started      |
 | 07   | Viewport caching       | not started      |
 | 08   | States and feedback    | not started      |

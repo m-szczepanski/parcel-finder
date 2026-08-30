@@ -23,9 +23,14 @@ produce candidate free-land polygons with computed properties. Pure, unit-tested
 - [ ] `classifyLandUse(tags): LandUseType` — map `landuse=residential|commercial|industrial`,
       `natural=grass|scrub` etc. to the existing union; fall back to `unknown`.
       Keep the table inline and small; the exclude/include policy is tuned in step 10.
+- [ ] Enforce the empty/taken policy (product decision, app doc section 8): forests
+      (`natural=wood`), water, parks/protected areas are **taken** and must not become free-land
+      candidates; farmland, meadow, grass, scrub, brownfield etc. are **empty**. Tag each output
+      feature `status: 'empty'`, and keep the raw building/taken polygons from the step-02 fetch
+      available for the click-time taken-site check built in step 04.
 - [ ] Unit tests with hand-built fixtures: square landuse with a building hole inside,
       fully-covered polygon (expect feature dropped), sliver discarded, invalid ring skipped,
-      tag classification cases.
+      tag classification cases (including wood/water/park classified as taken).
 
 ## Implementation notes
 
