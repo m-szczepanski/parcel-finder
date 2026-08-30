@@ -31,6 +31,10 @@ Thumbs.db
 # Vite
 .vite/
 
+# Emitted config artifacts (from tsc -b / composite tsconfig.node.json)
+vite.config.js
+vite.config.d.ts
+
 # TypeScript
 *.tsbuildinfo
 

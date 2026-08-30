@@ -2,8 +2,8 @@
 
 A personal web app for exploring a map and discovering likely unused/undeveloped land by hovering over areas — no cadastral registry connection required.
 
-> See [`parcel-finder-app-documentation.md`](./parcel-finder-app-documentation.md) for purpose, tech stack, and dependencies.
-> See [`parcel-finder-technical-implementation.md`](./parcel-finder-technical-implementation.md) for architecture and implementation details.
+> See [docs/parcel-finder-app-documentation.md](./docs/parcel-finder-app-documentation.md) for purpose, tech stack, and dependencies.
+> See [docs/parcel-finder-technical-implementation.md](./docs/parcel-finder-technical-implementation.md) for architecture and implementation details.
 
 ## What it does
 
@@ -27,35 +27,52 @@ All spatial data comes from OpenStreetMap (via the Overpass API) — no API keys
 
 ```bash
 # install dependencies
-pnpm install
+npm install
 
 # start dev server
-pnpm dev
+npm run dev
 
 # build for production
-pnpm build
+npm run build
 
 # preview production build
-pnpm preview
+npm run preview
 ```
 
 If using the optional backend proxy:
 
 ```bash
 cd server
-pnpm install
-pnpm dev
+npm install
+npm run dev
 ```
 
-## Project structure
+## Initial project structure
 
-```
+```text
 src/
-├── components/   # map, sidebar, shadcn ui components
-├── lib/          # overpass queries, geometry (turf), caching, geocoding
-├── hooks/        # viewport data fetching, hover state
-└── types/        # shared TS types
-server/           # optional Overpass proxy (Express)
+├── components/
+│   ├── map/
+│   ├── sidebar/
+│   └── ui/
+├── hooks/
+├── lib/
+├── styles/
+├── types/
+├── App.tsx
+├── main.tsx
+└── vite-env.d.ts
+server/
+├── index.ts
+└── package.json
+public/
+├── favicon.svg
+└── robots.txt
+index.html
+vite.config.ts
+tailwind.config.js
+postcss.config.js
+tsconfig.json
 ```
 
 See the technical implementation doc for the full breakdown.

@@ -35,7 +35,7 @@ parcel-finder/
 │   └── index.ts                  # Express route: /api/overpass?bbox=...
 ├── public/
 ├── index.html
-├── tailwind.config.ts
+├── tailwind.config.js
 ├── vite.config.ts
 └── tsconfig.json
 ```
