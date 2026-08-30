@@ -109,8 +109,8 @@ out skel qt;
 ```ts
 function computeFreeLand(
   landuse: FeatureCollection<Polygon>,
-  buildings: FeatureCollection<Polygon>
-): FeatureCollection<Polygon>
+  buildings: FeatureCollection<Polygon>,
+): FeatureCollection<Polygon>;
 ```
 
 Approach:
@@ -181,13 +181,13 @@ If the app grows (saved sites, filters, settings persisted across sessions), a l
 
 ## 5. Error & Edge Case Handling
 
-| Case | Handling |
-| --- | --- |
-| Overpass request fails / times out | Show a non-blocking toast (shadcn `Toast`/`Sonner`); keep last successful layer visible if any |
-| Zoom below `MIN_ZOOM` | Hide free-land layer, show "zoom in" hint instead of querying |
-| Empty result (no candidate land in view) | Sidebar shows an explicit empty state, not a blank panel |
+| Case                                                  | Handling                                                                                                                              |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Overpass request fails / times out                    | Show a non-blocking toast (shadcn `Toast`/`Sonner`); keep last successful layer visible if any                                        |
+| Zoom below `MIN_ZOOM`                                 | Hide free-land layer, show "zoom in" hint instead of querying                                                                         |
+| Empty result (no candidate land in view)              | Sidebar shows an explicit empty state, not a blank panel                                                                              |
 | Turf operations on invalid/self-intersecting polygons | Wrap geometry calls in try/catch per-feature so one bad OSM polygon doesn't break the whole batch; skip and log the offending feature |
-| Overpass rate limiting | Exponential backoff on retry; rely on caching to minimize repeat requests |
+| Overpass rate limiting                                | Exponential backoff on retry; rely on caching to minimize repeat requests                                                             |
 
 ## 6. Testing Approach
 

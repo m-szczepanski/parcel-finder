@@ -44,24 +44,24 @@ Open app → Map loads (last known / default location)
 
 ## 3. Tech Stack
 
-| Concern | Choice | Notes |
-| --- | --- | --- |
-| Language | TypeScript | type safety across map/geometry code |
-| Framework | React 18+ | component model, large ecosystem |
-| Build tool | Vite | fast dev server, minimal config |
-| UI components | shadcn/ui | accessible, unstyled-by-default components (sidebar, cards, toggles, dialogs) |
-| Styling | Tailwind CSS | required by / pairs with shadcn/ui |
-| Icons | lucide-react | ships alongside shadcn/ui by convention |
-| Mapping library | Leaflet + react-leaflet | free, no API key, mature plugin ecosystem, native per-feature hover events |
-| Base tiles | OpenStreetMap standard tiles | default basemap |
-| Imagery toggle | Esri World Imagery (free XYZ tiles) | visual sanity-check for "is this really empty?" |
-| Spatial data source | Overpass API | buildings (`building=*`) and landuse/landcover (`landuse=*`, `natural=*`) for current viewport |
-| Geometry engine | Turf.js | `difference`, `area`, `bbox`, optionally `booleanPointInPolygon` |
-| Geocoding (optional) | Nominatim (OSM) | reverse-geocode a nearby address for the sidebar |
-| Backend (optional, thin) | Node.js + Express (or a serverless function) | proxies/caches Overpass requests to avoid CORS and client-side rate-limit issues |
-| State management | React state / Context (or Zustand if it grows) | no need for Redux at this scale |
-| Package manager | pnpm (or npm) | personal preference, pnpm is fast and disk-efficient |
-| Hosting | Vercel / Netlify / Cloudflare Pages | free tier is sufficient for a personal project |
+| Concern                  | Choice                                         | Notes                                                                                          |
+| ------------------------ | ---------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Language                 | TypeScript                                     | type safety across map/geometry code                                                           |
+| Framework                | React 18+                                      | component model, large ecosystem                                                               |
+| Build tool               | Vite                                           | fast dev server, minimal config                                                                |
+| UI components            | shadcn/ui                                      | accessible, unstyled-by-default components (sidebar, cards, toggles, dialogs)                  |
+| Styling                  | Tailwind CSS                                   | required by / pairs with shadcn/ui                                                             |
+| Icons                    | lucide-react                                   | ships alongside shadcn/ui by convention                                                        |
+| Mapping library          | Leaflet + react-leaflet                        | free, no API key, mature plugin ecosystem, native per-feature hover events                     |
+| Base tiles               | OpenStreetMap standard tiles                   | default basemap                                                                                |
+| Imagery toggle           | Esri World Imagery (free XYZ tiles)            | visual sanity-check for "is this really empty?"                                                |
+| Spatial data source      | Overpass API                                   | buildings (`building=*`) and landuse/landcover (`landuse=*`, `natural=*`) for current viewport |
+| Geometry engine          | Turf.js                                        | `difference`, `area`, `bbox`, optionally `booleanPointInPolygon`                               |
+| Geocoding (optional)     | Nominatim (OSM)                                | reverse-geocode a nearby address for the sidebar                                               |
+| Backend (optional, thin) | Node.js + Express (or a serverless function)   | proxies/caches Overpass requests to avoid CORS and client-side rate-limit issues               |
+| State management         | React state / Context (or Zustand if it grows) | no need for Redux at this scale                                                                |
+| Package manager          | pnpm (or npm)                                  | personal preference, pnpm is fast and disk-efficient                                           |
+| Hosting                  | Vercel / Netlify / Cloudflare Pages            | free tier is sufficient for a personal project                                                 |
 
 ## 4. Dependencies
 
@@ -118,12 +118,12 @@ cors
 
 ## 5. Data Sources
 
-| Source | Purpose | Auth required | Notes |
-| --- | --- | --- | --- |
-| OpenStreetMap tile servers | Base map tiles | No | Standard OSM tile usage policy applies (reasonable request volume) |
-| Esri World Imagery | Satellite basemap toggle | No | Free XYZ tile endpoint |
-| Overpass API | Building + landuse polygons for current viewport | No | Public instances are rate-limited; a self-hosted or cached proxy is recommended if usage grows |
-| Nominatim | Reverse geocoding for sidebar address (optional) | No | Usage policy limits request rate; cache results |
+| Source                     | Purpose                                          | Auth required | Notes                                                                                          |
+| -------------------------- | ------------------------------------------------ | ------------- | ---------------------------------------------------------------------------------------------- |
+| OpenStreetMap tile servers | Base map tiles                                   | No            | Standard OSM tile usage policy applies (reasonable request volume)                             |
+| Esri World Imagery         | Satellite basemap toggle                         | No            | Free XYZ tile endpoint                                                                         |
+| Overpass API               | Building + landuse polygons for current viewport | No            | Public instances are rate-limited; a self-hosted or cached proxy is recommended if usage grows |
+| Nominatim                  | Reverse geocoding for sidebar address (optional) | No            | Usage policy limits request rate; cache results                                                |
 
 **No connection to official cadastral/geoportal services (e.g. GUGiK WMS/WFS) is used in this version.** This is a deliberate scope decision to keep the app data-source-simple and key-free; it can be revisited later if legally accurate parcel boundaries become a goal.
 

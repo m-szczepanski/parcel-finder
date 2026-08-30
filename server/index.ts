@@ -15,7 +15,8 @@ app.get('/api/overpass', async (req, res) => {
   }
 
   try {
-    const response = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(`
+    const response = await fetch(
+      `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(`
       [out:json][timeout:25];
       (
         way["building"](${bbox});
@@ -26,7 +27,8 @@ app.get('/api/overpass', async (req, res) => {
       out body geom;
       >;
       out skel qt;
-    `)}`);
+    `)}`,
+    );
 
     if (!response.ok) {
       res.status(502).json({ error: 'Overpass request failed' });

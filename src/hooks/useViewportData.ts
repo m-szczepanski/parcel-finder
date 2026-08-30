@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react';
+import type { Map as LeafletMap } from 'leaflet';
 import type { CandidateSiteFeatureCollection, ViewportBounds } from '@/types/geo';
 
 const MIN_ZOOM = 15;
 
-export function useViewportData(map: { getBounds: () => any; getZoom: () => number } | null) {
-  const [data] = useState<CandidateSiteFeatureCollection>({ type: 'FeatureCollection', features: [] });
+export function useViewportData(map: LeafletMap | null) {
+  const [data] = useState<CandidateSiteFeatureCollection>({
+    type: 'FeatureCollection',
+    features: [],
+  });
 
   const bounds = useMemo<ViewportBounds | null>(() => {
     if (!map) return null;

@@ -6,11 +6,16 @@ export function makeCacheKey(bounds: ViewportBounds): string {
   return `${bounds.south}:${bounds.west}:${bounds.north}:${bounds.east}`;
 }
 
-export function getCachedViewportData(bounds: ViewportBounds): CandidateSiteFeatureCollection | null {
+export function getCachedViewportData(
+  bounds: ViewportBounds,
+): CandidateSiteFeatureCollection | null {
   return cache.get(makeCacheKey(bounds)) ?? null;
 }
 
-export function setCachedViewportData(bounds: ViewportBounds, data: CandidateSiteFeatureCollection): void {
+export function setCachedViewportData(
+  bounds: ViewportBounds,
+  data: CandidateSiteFeatureCollection,
+): void {
   cache.set(makeCacheKey(bounds), data);
 }
 
