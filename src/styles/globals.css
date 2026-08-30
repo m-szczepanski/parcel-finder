@@ -111,6 +111,15 @@ body {
   border-color: rgba(148, 163, 184, 0.25);
 }
 
+.leaflet-control-attribution {
+  background: rgba(15, 23, 42, 0.8);
+  color: #94a3b8;
+}
+
+.leaflet-control-attribution a {
+  color: #cbd5e1;
+}
+
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
