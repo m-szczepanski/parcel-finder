@@ -22,13 +22,15 @@ describe('buildOverpassQuery', () => {
     expect(query).toContain('(52.1,21.05,52.2,21.15)');
   });
 
-  it('queries building, landuse, natural and leisure tags', () => {
+  it('queries building, landuse and only policy-relevant natural/leisure tags', () => {
     const query = buildOverpassQuery({ south: 0, west: 0, north: 1, east: 1 });
 
     expect(query).toContain('way["building"]');
     expect(query).toContain('way["landuse"]');
-    expect(query).toContain('way["natural"]');
-    expect(query).toContain('way["leisure"]');
+    expect(query).toContain('way["natural"~"^(wood|water|scrub|grass|meadow|heath)$"]');
+    expect(query).toContain('way["leisure"="park"]');
+    expect(query).not.toContain('way["natural"](');
+    expect(query).not.toContain('way["leisure"](');
   });
 });
 

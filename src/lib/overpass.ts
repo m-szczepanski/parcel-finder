@@ -9,13 +9,16 @@ const POLYGON_TAG_KEYS = ['building', 'landuse', 'natural', 'leisure'] as const;
 export function buildOverpassQuery(bounds: ViewportBounds): string {
   const bbox = `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`;
 
+  // Only policy-relevant natural/leisure values are fetched: the unfiltered
+  // way["natural"]/way["leisure"] queries ballooned the response and tripped
+  // Overpass rate limits. Tuned in step 10.
   return `
     [out:json][timeout:25];
     (
       way["building"](${bbox});
       way["landuse"](${bbox});
-      way["natural"](${bbox});
-      way["leisure"](${bbox});
+      way["natural"~"^(wood|water|scrub|grass|meadow|heath)$"](${bbox});
+      way["leisure"="park"](${bbox});
     );
     out body geom;
   `.trim();
