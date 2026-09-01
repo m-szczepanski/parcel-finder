@@ -7,6 +7,25 @@ import type { RawOsmFeatureCollection, ViewportBounds } from '@/types/geo';
 // range; below 13 city-wide bboxes get too heavy for Overpass. Tuned in step 10.
 const MIN_ZOOM = 13;
 const DEBOUNCE_MS = 500;
+// Once an area is fetched, it keeps serving while the viewport stays within half a
+// viewport of the fetched bounds — panning around locally must feel instant.
+const REFETCH_MARGIN_RATIO = 0.5;
+
+function isCoveredByFetch(fetched: ViewportBounds | null, bounds: ViewportBounds): boolean {
+  if (!fetched) {
+    return false;
+  }
+
+  const latMargin = (fetched.north - fetched.south) * REFETCH_MARGIN_RATIO;
+  const lonMargin = (fetched.east - fetched.west) * REFETCH_MARGIN_RATIO;
+
+  return (
+    bounds.south >= fetched.south - latMargin &&
+    bounds.west >= fetched.west - lonMargin &&
+    bounds.north <= fetched.north + latMargin &&
+    bounds.east <= fetched.east + lonMargin
+  );
+}
 
 const EMPTY_COLLECTION: RawOsmFeatureCollection = {
   type: 'FeatureCollection',
@@ -44,6 +63,7 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
   const [error, setError] = useState<Error | null>(null);
   const [belowMinZoom, setBelowMinZoom] = useState(true);
   const requestIdRef = useRef(0);
+  const fetchedBoundsRef = useRef<ViewportBounds | null>(null);
 
   useEffect(() => {
     if (!map) {
@@ -53,9 +73,8 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     const fetchViewport = () => {
-      const requestId = ++requestIdRef.current;
-
       if (map.getZoom() < MIN_ZOOM) {
+        fetchedBoundsRef.current = null;
         setData(EMPTY_COLLECTION);
         setLoading(false);
         setError(null);
@@ -64,14 +83,23 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       }
 
       const bounds = readBounds(map);
+      setBelowMinZoom(false);
+
+      // The viewport is still covered by the last fetch — keep the current polygons
+      // on screen instead of waiting on another Overpass round-trip.
+      if (isCoveredByFetch(fetchedBoundsRef.current, bounds)) {
+        return;
+      }
+
+      const requestId = ++requestIdRef.current;
       setLoading(true);
       setError(null);
-      setBelowMinZoom(false);
 
       fetchOverpassData(bounds)
         .then((response) => {
           if (requestIdRef.current !== requestId) return;
           const collection = overpassToGeoJSON(response.elements);
+          fetchedBoundsRef.current = bounds;
           setData(collection);
           logFetchedCounts(bounds, response.elements.length, collection.features.length);
         })
