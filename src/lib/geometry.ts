@@ -20,8 +20,10 @@ const LAND_USE_TAG_MAP: Record<string, Record<string, LandUseType>> = {
     commercial: 'commercial',
     industrial: 'industrial',
     farmland: 'farmland',
+    allotments: 'farmland',
     grass: 'grass',
     meadow: 'grass',
+    village_green: 'grass',
   },
   natural: {
     wood: 'forest',
@@ -29,6 +31,7 @@ const LAND_USE_TAG_MAP: Record<string, Record<string, LandUseType>> = {
     grass: 'grass',
     meadow: 'grass',
     scrub: 'grass',
+    heath: 'grass',
   },
   leisure: {
     park: 'park',
