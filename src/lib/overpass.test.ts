@@ -153,13 +153,50 @@ describe('fetchOverpassData', () => {
     await expect(pending).rejects.toThrow('aborted');
   });
 
-  it('throws on a non-OK response', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: false, status: 429, json: async () => ({}) }),
-    );
+  it('throws on a non-retryable response without retrying', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetchMock);
 
-    await expect(fetchOverpassData(BOUNDS)).rejects.toThrow('429');
+    await expect(fetchOverpassData(BOUNDS)).rejects.toThrow('400');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries once after a retryable status and succeeds', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ elements: [7] }) });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const pending = fetchOverpassData(BOUNDS);
+      await vi.advanceTimersByTimeAsync(2_000);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      await expect(pending).resolves.toEqual({ elements: [7] });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives up after one retry when the failure persists', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({}) });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const pending = fetchOverpassData(BOUNDS);
+      // Attach the rejection handler before the timers run, or the rejection is
+      // briefly unhandled while advanceTimersByTimeAsync is in flight.
+      const rejection = expect(pending).rejects.toThrow('503');
+      await vi.advanceTimersByTimeAsync(2_000);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      await rejection;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('propagates network/timeout failures', async () => {

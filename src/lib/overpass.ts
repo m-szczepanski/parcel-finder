@@ -3,6 +3,8 @@ import type { OverpassElement, OverpassGeometryPoint, OverpassResponse } from '@
 
 const OVERPASS_API_URL = 'https://overpass-api.de/api/interpreter';
 const OVERPASS_TIMEOUT_MS = 25_000;
+const OVERPASS_RETRY_DELAY_MS = 2_000;
+const OVERPASS_RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
 
 const POLYGON_TAG_KEYS = ['building', 'landuse', 'natural', 'leisure'] as const;
 
@@ -24,7 +26,51 @@ export function buildOverpassQuery(bounds: ViewportBounds): string {
   `.trim();
 }
 
+type OverpassFailure = Error & { status?: number };
+
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        reject(new DOMException('aborted', 'AbortError'));
+      },
+      { once: true },
+    );
+  });
+}
+
+function isRetryable(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === 'TimeoutError') {
+    return true;
+  }
+
+  const status = (error as OverpassFailure | null)?.status;
+
+  return status !== undefined && OVERPASS_RETRYABLE_STATUSES.has(status);
+}
+
 export async function fetchOverpassData(
+  bounds: ViewportBounds,
+  signal?: AbortSignal,
+): Promise<OverpassResponse> {
+  try {
+    return await requestOverpass(bounds, signal);
+  } catch (error) {
+    // The public instance throttles heavy clients — one backed-off retry recovers
+    // transient 429/5xx slots instead of failing the viewport outright.
+    if (signal?.aborted || !isRetryable(error)) {
+      throw error;
+    }
+
+    await delay(OVERPASS_RETRY_DELAY_MS, signal);
+    return requestOverpass(bounds, signal);
+  }
+}
+
+async function requestOverpass(
   bounds: ViewportBounds,
   signal?: AbortSignal,
 ): Promise<OverpassResponse> {
@@ -36,7 +82,11 @@ export async function fetchOverpassData(
   });
 
   if (!response.ok) {
-    throw new Error(`Overpass request failed with status ${response.status}`);
+    const failure: OverpassFailure = new Error(
+      `Overpass request failed with status ${response.status}`,
+    );
+    failure.status = response.status;
+    throw failure;
   }
 
   return (await response.json()) as OverpassResponse;
