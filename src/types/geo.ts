@@ -32,6 +32,26 @@ export type CandidateSiteFeatureCollection = {
   features: CandidateSiteFeature[];
 };
 
+export type RawOsmFeatureProperties = {
+  id: string;
+  tags: Record<string, string>;
+};
+
+export type RawOsmFeature = {
+  type: 'Feature';
+  id: string;
+  properties: RawOsmFeatureProperties;
+  geometry: {
+    type: 'Polygon';
+    coordinates: number[][][];
+  };
+};
+
+export type RawOsmFeatureCollection = {
+  type: 'FeatureCollection';
+  features: RawOsmFeature[];
+};
+
 export type ViewportBounds = {
   south: number;
   west: number;
