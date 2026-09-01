@@ -97,7 +97,7 @@ describe('useViewportData', () => {
 
   it('does not fetch below min zoom and flags belowMinZoom', () => {
     const fetchMock = stubOverpassFetch();
-    const map = createFakeMap(14);
+    const map = createFakeMap(12);
     const { result } = renderHook(() => useViewportData(map));
 
     act(() => {
@@ -122,7 +122,7 @@ describe('useViewportData', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     act(() => {
-      map.setZoom(14);
+      map.setZoom(12);
       map.emit('zoomend');
     });
     act(() => {

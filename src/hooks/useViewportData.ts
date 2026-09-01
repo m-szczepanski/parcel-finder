@@ -3,7 +3,9 @@ import type { Map as LeafletMap } from 'leaflet';
 import { fetchOverpassData, overpassToGeoJSON } from '@/lib/overpass';
 import type { RawOsmFeatureCollection, ViewportBounds } from '@/types/geo';
 
-const MIN_ZOOM = 15;
+// Widened from the originally documented 15 so candidates show across a wider zoom
+// range; below 13 city-wide bboxes get too heavy for Overpass. Tuned in step 10.
+const MIN_ZOOM = 13;
 const DEBOUNCE_MS = 500;
 
 const EMPTY_COLLECTION: RawOsmFeatureCollection = {
