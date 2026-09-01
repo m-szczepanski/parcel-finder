@@ -64,6 +64,7 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
   const [belowMinZoom, setBelowMinZoom] = useState(true);
   const requestIdRef = useRef(0);
   const fetchedBoundsRef = useRef<ViewportBounds | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!map) {
@@ -95,7 +96,13 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       setLoading(true);
       setError(null);
 
-      fetchOverpassData(bounds)
+      // Overpass allows only a couple of concurrent requests per client — abort the
+      // superseded in-flight one instead of leaving it queueing.
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      fetchOverpassData(bounds, controller.signal)
         .then((response) => {
           if (requestIdRef.current !== requestId) return;
           const collection = overpassToGeoJSON(response.elements);
@@ -126,6 +133,7 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       map.off('moveend', scheduleFetch);
       map.off('zoomend', scheduleFetch);
       clearTimeout(timer);
+      abortRef.current?.abort();
       requestIdRef.current += 1;
     };
   }, [map]);

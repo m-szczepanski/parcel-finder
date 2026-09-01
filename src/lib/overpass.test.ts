@@ -131,6 +131,26 @@ describe('fetchOverpassData', () => {
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it('aborts the request when the caller signal fires', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: unknown, init?: RequestInit) =>
+          new Promise<Response>((_, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new DOMException('aborted', 'AbortError')),
+            );
+          }),
+      ),
+    );
+
+    const controller = new AbortController();
+    const pending = fetchOverpassData(BOUNDS, controller.signal);
+    controller.abort();
+
+    await expect(pending).rejects.toThrow('aborted');
+  });
+
   it('throws on a non-OK response', async () => {
     vi.stubGlobal(
       'fetch',

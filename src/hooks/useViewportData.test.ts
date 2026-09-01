@@ -266,6 +266,36 @@ describe('useViewportData', () => {
     expect(result.current.data.features).toHaveLength(0);
   });
 
+  it('aborts the in-flight request when a newer one starts', () => {
+    const inits: Array<RequestInit | undefined> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: unknown, init?: RequestInit) => {
+        inits.push(init);
+        return new Promise<Response>(() => {});
+      }),
+    );
+
+    const map = createFakeMap(13);
+    renderHook(() => useViewportData(map));
+
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+
+    act(() => {
+      map.setBounds(52.1, 21.26, 52.2, 21.36);
+      map.emit('moveend');
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+
+    expect(inits).toHaveLength(2);
+    expect((inits[0]?.signal as AbortSignal).aborted).toBe(true);
+    expect((inits[1]?.signal as AbortSignal).aborted).toBe(false);
+  });
+
   it('exposes fetch failures as an error without throwing', async () => {
     vi.stubGlobal(
       'fetch',

@@ -21,11 +21,15 @@ export function buildOverpassQuery(bounds: ViewportBounds): string {
   `.trim();
 }
 
-export async function fetchOverpassData(bounds: ViewportBounds): Promise<OverpassResponse> {
+export async function fetchOverpassData(
+  bounds: ViewportBounds,
+  signal?: AbortSignal,
+): Promise<OverpassResponse> {
   const query = buildOverpassQuery(bounds);
+  const timeoutSignal = AbortSignal.timeout(OVERPASS_TIMEOUT_MS);
 
   const response = await fetch(`${OVERPASS_API_URL}?data=${encodeURIComponent(query)}`, {
-    signal: AbortSignal.timeout(OVERPASS_TIMEOUT_MS),
+    signal: signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal,
   });
 
   if (!response.ok) {
