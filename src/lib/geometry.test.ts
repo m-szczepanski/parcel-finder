@@ -137,6 +137,27 @@ describe('computeFreeLand', () => {
 
     expect(result.features.map((feature) => feature.properties.landuseType)).toEqual(['farmland']);
   });
+  it('skips an invalid polygon without breaking the batch', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Deliberately corrupted ring (non-numeric coordinate) that still has a valid
+    // bbox, so the invalid geometry is reached during subtraction.
+    const invalid = polygonFeature('way/broken', { landuse: 'residential' }, [
+      [0, 'x'],
+      [0.01, 0],
+      [0.01, 0.01],
+      [0, 0],
+    ] as unknown as Position[]);
+    const building = polygonFeature('way/b-1', { building: 'yes' }, ring(0.003, 0.003, 0.007, 0.007));
+
+    const result = computeFreeLand(collection([LANDUSE, invalid]), collection([building]));
+
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn.mock.calls[0][0]).toContain('way/broken');
+    expect(result.features).toHaveLength(1);
+    expect(result.features[0].id).toBe('way/land-1');
+
+    warn.mockRestore();
+  });
 });
 
 describe('classifyLandUse', () => {

@@ -70,10 +70,15 @@ export function computeFreeLand(
   const candidates: CandidateSiteFeature[] = [];
 
   for (const feature of landuse.features) {
-    const candidate = toCandidateSite(feature, buildingIndex);
+    try {
+      const candidate = toCandidateSite(feature, buildingIndex);
 
-    if (candidate) {
-      candidates.push(candidate);
+      if (candidate) {
+        candidates.push(candidate);
+      }
+    } catch (error) {
+      // One invalid OSM polygon must not break the batch — log and skip it.
+      console.warn(`[geometry] skipping invalid landuse polygon ${feature.properties.id}`, error);
     }
   }
 
