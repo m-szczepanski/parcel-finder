@@ -1,7 +1,10 @@
 import type { RawOsmFeature, RawOsmFeatureCollection, ViewportBounds } from '@/types/geo';
 import type { OverpassElement, OverpassGeometryPoint, OverpassResponse } from '@/types/overpass';
 
-const OVERPASS_API_URL = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
 const OVERPASS_TIMEOUT_MS = 25_000;
 const OVERPASS_RETRY_DELAY_MS = 2_000;
 const OVERPASS_RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
@@ -52,33 +55,51 @@ function isRetryable(error: unknown): boolean {
   return status !== undefined && OVERPASS_RETRYABLE_STATUSES.has(status);
 }
 
+// Hand-rolled AbortSignal.any replacement — not every browser exposes it, and a
+// missing static would fail every single request.
+function combineSignals(signals: AbortSignal[]): AbortSignal {
+  const controller = new AbortController();
+
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort();
+      break;
+    }
+    signal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
+
+  return controller.signal;
+}
+
 export async function fetchOverpassData(
   bounds: ViewportBounds,
   signal?: AbortSignal,
 ): Promise<OverpassResponse> {
   try {
-    return await requestOverpass(bounds, signal);
+    return await requestOverpass(bounds, 0, signal);
   } catch (error) {
-    // The public instance throttles heavy clients — one backed-off retry recovers
-    // transient 429/5xx slots instead of failing the viewport outright.
+    // The public instances throttle heavy clients — one backed-off retry on the
+    // mirror endpoint recovers transient 429/5xx instead of failing the viewport.
     if (signal?.aborted || !isRetryable(error)) {
       throw error;
     }
 
     await delay(OVERPASS_RETRY_DELAY_MS, signal);
-    return requestOverpass(bounds, signal);
+    return requestOverpass(bounds, 1, signal);
   }
 }
 
 async function requestOverpass(
   bounds: ViewportBounds,
+  endpointIndex: number,
   signal?: AbortSignal,
 ): Promise<OverpassResponse> {
+  const endpoint = OVERPASS_ENDPOINTS[endpointIndex % OVERPASS_ENDPOINTS.length];
   const query = buildOverpassQuery(bounds);
   const timeoutSignal = AbortSignal.timeout(OVERPASS_TIMEOUT_MS);
 
-  const response = await fetch(`${OVERPASS_API_URL}?data=${encodeURIComponent(query)}`, {
-    signal: signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal,
+  const response = await fetch(`${endpoint}?data=${encodeURIComponent(query)}`, {
+    signal: signal ? combineSignals([signal, timeoutSignal]) : timeoutSignal,
   });
 
   if (!response.ok) {

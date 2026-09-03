@@ -180,6 +180,29 @@ describe('fetchOverpassData', () => {
     }
   });
 
+  it('retries on the mirror endpoint after a retryable status', async () => {
+    vi.useFakeTimers();
+    try {
+      const urls: string[] = [];
+      const fetchMock = vi.fn((url: string) => {
+        urls.push(url);
+        return Promise.resolve({ ok: false, status: 429, json: async () => ({}) });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const pending = fetchOverpassData(BOUNDS);
+      const rejection = expect(pending).rejects.toThrow('429');
+      await vi.advanceTimersByTimeAsync(2_000);
+      await rejection;
+
+      expect(urls).toHaveLength(2);
+      expect(urls[0]).toContain('https://overpass-api.de/api/interpreter');
+      expect(urls[1]).toContain('https://overpass.kumi.systems/api/interpreter');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('gives up after one retry when the failure persists', async () => {
     vi.useFakeTimers();
     try {
