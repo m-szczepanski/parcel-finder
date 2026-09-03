@@ -1,7 +1,7 @@
 # 03 — Free-land geometry
 
 **Depends on:** 02 (needs fetched GeoJSON)
-**Status:** not started
+**Status:** done
 
 ## Goal
 
@@ -17,18 +17,18 @@ produce candidate free-land polygons with computed properties. Pure, unit-tested
 
 ## Tasks
 
-- [ ] `computeFreeLand(landuse, buildings): CandidateSiteFeatureCollection`: 1. pre-filter buildings per landuse polygon using `turf.bbox` overlap (cheap numeric test); 2. union the overlapping buildings — **Turf 7: `union()` takes a FeatureCollection**,
+- [x] `computeFreeLand(landuse, buildings): CandidateSiteFeatureCollection`: 1. pre-filter buildings per landuse polygon using `turf.bbox` overlap (cheap numeric test); 2. union the overlapping buildings — **Turf 7: `union()` takes a FeatureCollection**,
       not pairwise args; 3. `difference(landusePolygon, buildingUnion)` — can return `null` (full overlap); 4. discard slivers below `MIN_AREA_M2` (start at 50, tuned in step 10); 5. attach `id`, `landuseType`, `area` (`turf.area`), `centroid` to properties; 6. wrap each feature in try/catch — one invalid OSM polygon must not break the batch
       (log and skip).
-- [ ] `classifyLandUse(tags): LandUseType` — map `landuse=residential|commercial|industrial`,
+- [x] `classifyLandUse(tags): LandUseType` — map `landuse=residential|commercial|industrial`,
       `natural=grass|scrub` etc. to the existing union; fall back to `unknown`.
       Keep the table inline and small; the exclude/include policy is tuned in step 10.
-- [ ] Enforce the empty/taken policy (product decision, app doc section 8): forests
+- [x] Enforce the empty/taken policy (product decision, app doc section 8): forests
       (`natural=wood`), water, parks/protected areas are **taken** and must not become free-land
       candidates; farmland, meadow, grass, scrub, brownfield etc. are **empty**. Tag each output
       feature `status: 'empty'`, and keep the raw building/taken polygons from the step-02 fetch
       available for the click-time taken-site check built in step 04.
-- [ ] Unit tests with hand-built fixtures: square landuse with a building hole inside,
+- [x] Unit tests with hand-built fixtures: square landuse with a building hole inside,
       fully-covered polygon (expect feature dropped), sliver discarded, invalid ring skipped,
       tag classification cases (including wood/water/park classified as taken).
 
@@ -41,9 +41,9 @@ produce candidate free-land polygons with computed properties. Pure, unit-tested
 
 ## Exit criteria
 
-- [ ] Given a small fixture bbox, `computeFreeLand` output is exactly the expected GeoJSON.
-- [ ] All unit tests green; geometry has zero React/DOM imports.
-- [ ] lint / typecheck / test / build all green.
+- [x] Given a small fixture bbox, `computeFreeLand` output is exactly the expected GeoJSON.
+- [x] All unit tests green; geometry has zero React/DOM imports.
+- [x] lint / typecheck / test / build all green.
 
 ## Files touched
 

@@ -1,26 +1,40 @@
 import { useEffect, useState, type Ref } from 'react';
-import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
-import type { Map as LeafletMap } from 'leaflet';
+import { GeoJSON, MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
+import type { Map as LeafletMap, PathOptions } from 'leaflet';
 import { loadLastView, saveLastView } from '@/lib/mapState';
+import type { CandidateSiteFeatureCollection } from '@/types/geo';
 
 const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 const OSM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
+const FREE_LAND_STYLE: PathOptions = {
+  color: '#f97316',
+  fillColor: '#f97316',
+  fillOpacity: 0.25,
+  weight: 1,
+};
+
 const GEOLOCATION_TIMEOUT_MS = 5000;
 const GEOLOCATION_MAX_AGE_MS = 60_000;
 
 type MapViewProps = {
   ref?: Ref<LeafletMap>;
+  freeLand?: { key: number; data: CandidateSiteFeatureCollection };
 };
 
-export function MapView({ ref }: MapViewProps) {
+export function MapView({ ref, freeLand }: MapViewProps) {
   const [initialView] = useState(loadLastView);
 
   return (
     <MapContainer ref={ref} center={initialView.center} zoom={initialView.zoom} maxZoom={19}>
       <TileLayer attribution={OSM_ATTRIBUTION} url={OSM_TILE_URL} />
+      {freeLand && freeLand.data.features.length > 0 && (
+        // react-leaflet's GeoJSON ignores data updates after creation, so the key
+        // must change per fetch to force a fresh layer.
+        <GeoJSON key={freeLand.key} data={freeLand.data} style={FREE_LAND_STYLE} />
+      )}
       <ViewportController />
     </MapContainer>
   );

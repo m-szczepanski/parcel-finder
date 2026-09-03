@@ -22,13 +22,30 @@ describe('buildOverpassQuery', () => {
     expect(query).toContain('(52.1,21.05,52.2,21.15)');
   });
 
-  it('queries building, landuse, natural and leisure tags', () => {
+  it('queries building, landuse and only policy-relevant natural/leisure tags', () => {
     const query = buildOverpassQuery({ south: 0, west: 0, north: 1, east: 1 });
 
     expect(query).toContain('way["building"]');
     expect(query).toContain('way["landuse"]');
-    expect(query).toContain('way["natural"]');
-    expect(query).toContain('way["leisure"]');
+    expect(query).toContain('way["natural"~"^(wood|water|scrub|grass|meadow|heath)$"]');
+    expect(query).toContain('way["leisure"="park"]');
+    expect(query).toContain('way["boundary"="protected_area"]');
+    expect(query).not.toContain('way["natural"](');
+    expect(query).not.toContain('way["leisure"](');
+  });
+
+  it('keeps boundary-tagged protected areas as polygon features', () => {
+    const protectedArea: OverpassElement = {
+      type: 'way',
+      id: 124,
+      tags: { boundary: 'protected_area', protect_class: '4' },
+      geometry: closedBuildingWay.geometry,
+    };
+
+    const { features } = overpassToGeoJSON([protectedArea]);
+
+    expect(features).toHaveLength(1);
+    expect(features[0].properties.tags.boundary).toBe('protected_area');
   });
 });
 
@@ -131,13 +148,93 @@ describe('fetchOverpassData', () => {
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it('throws on a non-OK response', async () => {
+  it('aborts the request when the caller signal fires', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: false, status: 429, json: async () => ({}) }),
+      vi.fn(
+        (_url: unknown, init?: RequestInit) =>
+          new Promise<Response>((_, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new DOMException('aborted', 'AbortError')),
+            );
+          }),
+      ),
     );
 
-    await expect(fetchOverpassData(BOUNDS)).rejects.toThrow('429');
+    const controller = new AbortController();
+    const pending = fetchOverpassData(BOUNDS, controller.signal);
+    controller.abort();
+
+    await expect(pending).rejects.toThrow('aborted');
+  });
+
+  it('throws on a non-retryable response without retrying', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchOverpassData(BOUNDS)).rejects.toThrow('400');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries once after a retryable status and succeeds', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ elements: [7] }) });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const pending = fetchOverpassData(BOUNDS);
+      await vi.advanceTimersByTimeAsync(2_000);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      await expect(pending).resolves.toEqual({ elements: [7] });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('retries on the mirror endpoint after a retryable status', async () => {
+    vi.useFakeTimers();
+    try {
+      const urls: string[] = [];
+      const fetchMock = vi.fn((url: string) => {
+        urls.push(url);
+        return Promise.resolve({ ok: false, status: 429, json: async () => ({}) });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const pending = fetchOverpassData(BOUNDS);
+      const rejection = expect(pending).rejects.toThrow('429');
+      await vi.advanceTimersByTimeAsync(2_000);
+      await rejection;
+
+      expect(urls).toHaveLength(2);
+      expect(urls[0]).toContain('https://overpass-api.de/api/interpreter');
+      expect(urls[1]).toContain('https://overpass.kumi.systems/api/interpreter');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives up after one retry when the failure persists', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({}) });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const pending = fetchOverpassData(BOUNDS);
+      // Attach the rejection handler before the timers run, or the rejection is
+      // briefly unhandled while advanceTimersByTimeAsync is in flight.
+      const rejection = expect(pending).rejects.toThrow('503');
+      await vi.advanceTimersByTimeAsync(2_000);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      await rejection;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('propagates network/timeout failures', async () => {

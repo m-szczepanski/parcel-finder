@@ -3,8 +3,29 @@ import type { Map as LeafletMap } from 'leaflet';
 import { fetchOverpassData, overpassToGeoJSON } from '@/lib/overpass';
 import type { RawOsmFeatureCollection, ViewportBounds } from '@/types/geo';
 
-const MIN_ZOOM = 15;
+// Widened from the originally documented 15 so candidates show across a wider zoom
+// range; below 13 city-wide bboxes get too heavy for Overpass. Tuned in step 10.
+const MIN_ZOOM = 13;
 const DEBOUNCE_MS = 500;
+// Once an area is fetched, it keeps serving while the viewport stays within half a
+// viewport of the fetched bounds — panning around locally must feel instant.
+const REFETCH_MARGIN_RATIO = 0.5;
+
+function isCoveredByFetch(fetched: ViewportBounds | null, bounds: ViewportBounds): boolean {
+  if (!fetched) {
+    return false;
+  }
+
+  const latMargin = (fetched.north - fetched.south) * REFETCH_MARGIN_RATIO;
+  const lonMargin = (fetched.east - fetched.west) * REFETCH_MARGIN_RATIO;
+
+  return (
+    bounds.south >= fetched.south - latMargin &&
+    bounds.west >= fetched.west - lonMargin &&
+    bounds.north <= fetched.north + latMargin &&
+    bounds.east <= fetched.east + lonMargin
+  );
+}
 
 const EMPTY_COLLECTION: RawOsmFeatureCollection = {
   type: 'FeatureCollection',
@@ -42,6 +63,8 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
   const [error, setError] = useState<Error | null>(null);
   const [belowMinZoom, setBelowMinZoom] = useState(true);
   const requestIdRef = useRef(0);
+  const fetchedBoundsRef = useRef<ViewportBounds | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!map) {
@@ -51,9 +74,8 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     const fetchViewport = () => {
-      const requestId = ++requestIdRef.current;
-
       if (map.getZoom() < MIN_ZOOM) {
+        fetchedBoundsRef.current = null;
         setData(EMPTY_COLLECTION);
         setLoading(false);
         setError(null);
@@ -62,14 +84,35 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       }
 
       const bounds = readBounds(map);
-      setLoading(true);
-      setError(null);
       setBelowMinZoom(false);
 
-      fetchOverpassData(bounds)
+      // The viewport is still covered by the last successful fetch — keep the current
+      // polygons on screen instead of waiting on another Overpass round-trip.
+      if (isCoveredByFetch(fetchedBoundsRef.current, bounds)) {
+        // Retire any superseded in-flight request so it can neither overwrite the
+        // already-valid data nor surface its abort as an error.
+        abortRef.current?.abort();
+        requestIdRef.current += 1;
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
+      const requestId = ++requestIdRef.current;
+      setLoading(true);
+      setError(null);
+
+      // Overpass allows only a couple of concurrent requests per client — abort the
+      // superseded in-flight one instead of leaving it queueing.
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      fetchOverpassData(bounds, controller.signal)
         .then((response) => {
           if (requestIdRef.current !== requestId) return;
           const collection = overpassToGeoJSON(response.elements);
+          fetchedBoundsRef.current = bounds;
           setData(collection);
           logFetchedCounts(bounds, response.elements.length, collection.features.length);
         })
@@ -96,6 +139,7 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       map.off('moveend', scheduleFetch);
       map.off('zoomend', scheduleFetch);
       clearTimeout(timer);
+      abortRef.current?.abort();
       requestIdRef.current += 1;
     };
   }, [map]);

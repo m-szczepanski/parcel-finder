@@ -7,23 +7,28 @@ const DEBOUNCE_MS = 500;
 
 type FakeMap = LeafletMap & {
   setZoom: (zoom: number) => void;
+  setBounds: (south: number, west: number, north: number, east: number) => void;
   emit: (event: 'moveend' | 'zoomend') => void;
 };
 
 function createFakeMap(zoom: number): FakeMap {
   const listeners = new Map<string, Set<() => void>>();
   let currentZoom = zoom;
+  let bounds = { south: 52.1, west: 21.05, north: 52.2, east: 21.15 };
 
   return {
     getZoom: () => currentZoom,
     setZoom: (nextZoom: number) => {
       currentZoom = nextZoom;
     },
+    setBounds: (south: number, west: number, north: number, east: number) => {
+      bounds = { south, west, north, east };
+    },
     getBounds: () => ({
-      getSouth: () => 52.1,
-      getWest: () => 21.05,
-      getNorth: () => 52.2,
-      getEast: () => 21.15,
+      getSouth: () => bounds.south,
+      getWest: () => bounds.west,
+      getNorth: () => bounds.north,
+      getEast: () => bounds.east,
     }),
     on: (event: string, listener: () => void) => {
       if (!listeners.has(event)) {
@@ -97,7 +102,7 @@ describe('useViewportData', () => {
 
   it('does not fetch below min zoom and flags belowMinZoom', () => {
     const fetchMock = stubOverpassFetch();
-    const map = createFakeMap(14);
+    const map = createFakeMap(12);
     const { result } = renderHook(() => useViewportData(map));
 
     act(() => {
@@ -122,7 +127,7 @@ describe('useViewportData', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     act(() => {
-      map.setZoom(14);
+      map.setZoom(12);
       map.emit('zoomend');
     });
     act(() => {
@@ -132,6 +137,68 @@ describe('useViewportData', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(result.current.belowMinZoom).toBe(true);
     expect(result.current.data.features).toHaveLength(0);
+
+    act(() => {
+      map.setZoom(13);
+      map.emit('zoomend');
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    // The cleared fetched bounds must not suppress the refetch after zooming back in.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.current.belowMinZoom).toBe(false);
+  });
+
+  it('does not refetch while the viewport stays inside the fetched area', async () => {
+    const fetchMock = stubOverpassFetch({ elements: [closedWay] });
+    const map = createFakeMap(13);
+    const { result } = renderHook(() => useViewportData(map));
+
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      map.setBounds(52.08, 21.03, 52.19, 21.14);
+      map.emit('moveend');
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.data.features).toHaveLength(1);
+  });
+
+  it('refetches once the viewport moves beyond the fetched area', async () => {
+    const fetchMock = stubOverpassFetch({ elements: [closedWay] });
+    const map = createFakeMap(13);
+    renderHook(() => useViewportData(map));
+
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      map.setBounds(52.1, 21.26, 52.2, 21.36);
+      map.emit('moveend');
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('collapses rapid map moves into a single request per settled move', async () => {
@@ -149,6 +216,7 @@ describe('useViewportData', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     act(() => {
+      map.setBounds(52.1, 21.36, 52.2, 21.46);
       map.emit('moveend');
       vi.advanceTimersByTime(DEBOUNCE_MS);
     });
@@ -178,6 +246,7 @@ describe('useViewportData', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     act(() => {
+      map.setBounds(52.1, 21.36, 52.2, 21.46);
       map.emit('moveend');
       vi.advanceTimersByTime(DEBOUNCE_MS);
     });
@@ -195,6 +264,90 @@ describe('useViewportData', () => {
     await act(async () => {});
 
     expect(result.current.data.features).toHaveLength(0);
+  });
+
+  it('aborts the in-flight request when a newer one starts', () => {
+    const inits: Array<RequestInit | undefined> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: unknown, init?: RequestInit) => {
+        inits.push(init);
+        return new Promise<Response>(() => {});
+      }),
+    );
+
+    const map = createFakeMap(13);
+    renderHook(() => useViewportData(map));
+
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+
+    act(() => {
+      map.setBounds(52.1, 21.26, 52.2, 21.36);
+      map.emit('moveend');
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+
+    expect(inits).toHaveLength(2);
+    expect((inits[0]?.signal as AbortSignal).aborted).toBe(true);
+    expect((inits[1]?.signal as AbortSignal).aborted).toBe(false);
+  });
+
+  it('discards a superseded in-flight request once the viewport returns to a covered area', async () => {
+    const farWay: OverpassElement = { ...closedWay, id: 2 };
+    let releaseB: (response: unknown) => void = () => {};
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ elements: [closedWay] }) })
+      .mockImplementationOnce(
+        () =>
+          new Promise<unknown>((resolve) => {
+            releaseB = resolve;
+          }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const map = createFakeMap(13);
+    const { result } = renderHook(() => useViewportData(map));
+
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    expect(result.current.data.features[0].id).toBe('way/1');
+
+    // Pan out beyond the margin — request B starts and hangs in flight.
+    act(() => {
+      map.setBounds(52.1, 21.36, 52.2, 21.46);
+      map.emit('moveend');
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+
+    // Pan back into the covered area before B completes.
+    act(() => {
+      map.setBounds(52.1, 21.05, 52.2, 21.15);
+      map.emit('moveend');
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+
+    // B finally resolves with different data — it must not overwrite the viewport.
+    act(() => {
+      releaseB({ ok: true, status: 200, json: async () => ({ elements: [farWay] }) });
+    });
+    await act(async () => {});
+
+    expect(result.current.data.features).toHaveLength(1);
+    expect(result.current.data.features[0].id).toBe('way/1');
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
   });
 
   it('exposes fetch failures as an error without throwing', async () => {

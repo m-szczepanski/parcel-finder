@@ -1,3 +1,5 @@
+import type { Position } from 'geojson';
+
 export type LandUseType =
   | 'residential'
   | 'commercial'
@@ -5,13 +7,17 @@ export type LandUseType =
   | 'grass'
   | 'farmland'
   | 'forest'
+  | 'water'
   | 'park'
   | 'unknown';
+
+export type SiteStatus = 'empty' | 'taken';
 
 export type CandidateSiteProperties = {
   id: string;
   landuseType: LandUseType;
   area: number;
+  status: SiteStatus;
   centroid?: [number, number];
   address?: string;
   source?: 'overpass';
@@ -43,7 +49,7 @@ export type RawOsmFeature = {
   properties: RawOsmFeatureProperties;
   geometry: {
     type: 'Polygon';
-    coordinates: number[][][];
+    coordinates: Position[][];
   };
 };
 

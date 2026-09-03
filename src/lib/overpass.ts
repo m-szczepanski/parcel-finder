@@ -1,35 +1,114 @@
 import type { RawOsmFeature, RawOsmFeatureCollection, ViewportBounds } from '@/types/geo';
 import type { OverpassElement, OverpassGeometryPoint, OverpassResponse } from '@/types/overpass';
 
-const OVERPASS_API_URL = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
 const OVERPASS_TIMEOUT_MS = 25_000;
+const OVERPASS_RETRY_DELAY_MS = 2_000;
+const OVERPASS_RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
 
-const POLYGON_TAG_KEYS = ['building', 'landuse', 'natural', 'leisure'] as const;
+const POLYGON_TAG_KEYS = ['building', 'landuse', 'natural', 'leisure', 'boundary'] as const;
 
 export function buildOverpassQuery(bounds: ViewportBounds): string {
   const bbox = `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`;
 
+  // Only policy-relevant tag values are fetched: the unfiltered way["natural"]/
+  // way["leisure"] queries ballooned the response and tripped Overpass rate limits.
+  // Tuned in step 10.
   return `
     [out:json][timeout:25];
     (
       way["building"](${bbox});
       way["landuse"](${bbox});
-      way["natural"](${bbox});
-      way["leisure"](${bbox});
+      way["natural"~"^(wood|water|scrub|grass|meadow|heath)$"](${bbox});
+      way["leisure"="park"](${bbox});
+      way["boundary"="protected_area"](${bbox});
     );
     out body geom;
   `.trim();
 }
 
-export async function fetchOverpassData(bounds: ViewportBounds): Promise<OverpassResponse> {
-  const query = buildOverpassQuery(bounds);
+type OverpassFailure = Error & { status?: number };
 
-  const response = await fetch(`${OVERPASS_API_URL}?data=${encodeURIComponent(query)}`, {
-    signal: AbortSignal.timeout(OVERPASS_TIMEOUT_MS),
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        reject(new DOMException('aborted', 'AbortError'));
+      },
+      { once: true },
+    );
+  });
+}
+
+function isRetryable(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === 'TimeoutError') {
+    return true;
+  }
+
+  const status = (error as OverpassFailure | null)?.status;
+
+  return status !== undefined && OVERPASS_RETRYABLE_STATUSES.has(status);
+}
+
+// Hand-rolled AbortSignal.any replacement — not every browser exposes it, and a
+// missing static would fail every single request.
+function combineSignals(signals: AbortSignal[]): AbortSignal {
+  const controller = new AbortController();
+
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+      break;
+    }
+    signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
+  }
+
+  return controller.signal;
+}
+
+export async function fetchOverpassData(
+  bounds: ViewportBounds,
+  signal?: AbortSignal,
+): Promise<OverpassResponse> {
+  try {
+    return await requestOverpass(bounds, 0, signal);
+  } catch (error) {
+    // The public instances throttle heavy clients — one backed-off retry on the
+    // mirror endpoint recovers transient 429/5xx instead of failing the viewport.
+    if (signal?.aborted || !isRetryable(error)) {
+      throw error;
+    }
+
+    await delay(OVERPASS_RETRY_DELAY_MS, signal);
+    return requestOverpass(bounds, 1, signal);
+  }
+}
+
+async function requestOverpass(
+  bounds: ViewportBounds,
+  endpointIndex: number,
+  signal?: AbortSignal,
+): Promise<OverpassResponse> {
+  const endpoint = OVERPASS_ENDPOINTS[endpointIndex % OVERPASS_ENDPOINTS.length];
+  const query = buildOverpassQuery(bounds);
+  const timeoutSignal = AbortSignal.timeout(OVERPASS_TIMEOUT_MS);
+
+  const response = await fetch(`${endpoint}?data=${encodeURIComponent(query)}`, {
+    signal: signal ? combineSignals([signal, timeoutSignal]) : timeoutSignal,
   });
 
   if (!response.ok) {
-    throw new Error(`Overpass request failed with status ${response.status}`);
+    const failure: OverpassFailure = new Error(
+      `Overpass request failed with status ${response.status}`,
+    );
+    failure.status = response.status;
+    throw failure;
   }
 
   return (await response.json()) as OverpassResponse;
