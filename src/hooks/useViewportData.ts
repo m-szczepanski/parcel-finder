@@ -86,9 +86,15 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       const bounds = readBounds(map);
       setBelowMinZoom(false);
 
-      // The viewport is still covered by the last fetch — keep the current polygons
-      // on screen instead of waiting on another Overpass round-trip.
+      // The viewport is still covered by the last successful fetch — keep the current
+      // polygons on screen instead of waiting on another Overpass round-trip.
       if (isCoveredByFetch(fetchedBoundsRef.current, bounds)) {
+        // Retire any superseded in-flight request so it can neither overwrite the
+        // already-valid data nor surface its abort as an error.
+        abortRef.current?.abort();
+        requestIdRef.current += 1;
+        setLoading(false);
+        setError(null);
         return;
       }
 

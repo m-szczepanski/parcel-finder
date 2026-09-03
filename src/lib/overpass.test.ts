@@ -29,8 +29,23 @@ describe('buildOverpassQuery', () => {
     expect(query).toContain('way["landuse"]');
     expect(query).toContain('way["natural"~"^(wood|water|scrub|grass|meadow|heath)$"]');
     expect(query).toContain('way["leisure"="park"]');
+    expect(query).toContain('way["boundary"="protected_area"]');
     expect(query).not.toContain('way["natural"](');
     expect(query).not.toContain('way["leisure"](');
+  });
+
+  it('keeps boundary-tagged protected areas as polygon features', () => {
+    const protectedArea: OverpassElement = {
+      type: 'way',
+      id: 124,
+      tags: { boundary: 'protected_area', protect_class: '4' },
+      geometry: closedBuildingWay.geometry,
+    };
+
+    const { features } = overpassToGeoJSON([protectedArea]);
+
+    expect(features).toHaveLength(1);
+    expect(features[0].properties.tags.boundary).toBe('protected_area');
   });
 });
 

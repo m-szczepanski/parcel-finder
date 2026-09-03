@@ -9,14 +9,14 @@ const OVERPASS_TIMEOUT_MS = 25_000;
 const OVERPASS_RETRY_DELAY_MS = 2_000;
 const OVERPASS_RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
 
-const POLYGON_TAG_KEYS = ['building', 'landuse', 'natural', 'leisure'] as const;
+const POLYGON_TAG_KEYS = ['building', 'landuse', 'natural', 'leisure', 'boundary'] as const;
 
 export function buildOverpassQuery(bounds: ViewportBounds): string {
   const bbox = `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`;
 
-  // Only policy-relevant natural/leisure values are fetched: the unfiltered
-  // way["natural"]/way["leisure"] queries ballooned the response and tripped
-  // Overpass rate limits. Tuned in step 10.
+  // Only policy-relevant tag values are fetched: the unfiltered way["natural"]/
+  // way["leisure"] queries ballooned the response and tripped Overpass rate limits.
+  // Tuned in step 10.
   return `
     [out:json][timeout:25];
     (
@@ -24,6 +24,7 @@ export function buildOverpassQuery(bounds: ViewportBounds): string {
       way["landuse"](${bbox});
       way["natural"~"^(wood|water|scrub|grass|meadow|heath)$"](${bbox});
       way["leisure"="park"](${bbox});
+      way["boundary"="protected_area"](${bbox});
     );
     out body geom;
   `.trim();
@@ -62,10 +63,10 @@ function combineSignals(signals: AbortSignal[]): AbortSignal {
 
   for (const signal of signals) {
     if (signal.aborted) {
-      controller.abort();
+      controller.abort(signal.reason);
       break;
     }
-    signal.addEventListener('abort', () => controller.abort(), { once: true });
+    signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
   }
 
   return controller.signal;

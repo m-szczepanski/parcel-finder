@@ -296,6 +296,60 @@ describe('useViewportData', () => {
     expect((inits[1]?.signal as AbortSignal).aborted).toBe(false);
   });
 
+  it('discards a superseded in-flight request once the viewport returns to a covered area', async () => {
+    const farWay: OverpassElement = { ...closedWay, id: 2 };
+    let releaseB: (response: unknown) => void = () => {};
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ elements: [closedWay] }) })
+      .mockImplementationOnce(
+        () =>
+          new Promise<unknown>((resolve) => {
+            releaseB = resolve;
+          }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const map = createFakeMap(13);
+    const { result } = renderHook(() => useViewportData(map));
+
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    expect(result.current.data.features[0].id).toBe('way/1');
+
+    // Pan out beyond the margin — request B starts and hangs in flight.
+    act(() => {
+      map.setBounds(52.1, 21.36, 52.2, 21.46);
+      map.emit('moveend');
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+
+    // Pan back into the covered area before B completes.
+    act(() => {
+      map.setBounds(52.1, 21.05, 52.2, 21.15);
+      map.emit('moveend');
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+
+    // B finally resolves with different data — it must not overwrite the viewport.
+    act(() => {
+      releaseB({ ok: true, status: 200, json: async () => ({ elements: [farWay] }) });
+    });
+    await act(async () => {});
+
+    expect(result.current.data.features).toHaveLength(1);
+    expect(result.current.data.features[0].id).toBe('way/1');
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+
   it('exposes fetch failures as an error without throwing', async () => {
     vi.stubGlobal(
       'fetch',
