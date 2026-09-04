@@ -4,6 +4,7 @@ import type { Map as LeafletMap } from 'leaflet';
 import { MapView } from '@/components/map/MapView';
 import { SiteDetails } from '@/components/sidebar/SiteDetails';
 import { Toaster } from '@/components/ui/sonner';
+import { SelectedFeatureProvider } from '@/hooks/useSelectedFeature';
 import { useViewportData } from '@/hooks/useViewportData';
 import { computeFreeLand } from '@/lib/geometry';
 
@@ -38,11 +39,13 @@ function App() {
   }, [data, version]);
 
   return (
-    <main className="relative h-dvh w-full overflow-hidden">
-      <MapView ref={setMap} freeLand={freeLand} belowMinZoom={belowMinZoom} />
-      <SiteDetails />
-      <Toaster position="bottom-right" />
-    </main>
+    <SelectedFeatureProvider>
+      <main className="relative h-dvh w-full overflow-hidden">
+        <MapView ref={setMap} freeLand={freeLand} belowMinZoom={belowMinZoom} />
+        <SiteDetails />
+        <Toaster position="bottom-right" />
+      </main>
+    </SelectedFeatureProvider>
   );
 }
 
