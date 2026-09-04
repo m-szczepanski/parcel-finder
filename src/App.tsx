@@ -31,7 +31,8 @@ function App() {
       <main className="relative h-dvh w-full overflow-hidden">
         <MapView
           ref={setMap}
-          freeLand={{ key: version, data: freeLand }}
+          freeLand={freeLand}
+          dataVersion={version}
           belowMinZoom={belowMinZoom}
           takenFeatures={takenFeatures}
         />

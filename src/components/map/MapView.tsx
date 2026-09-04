@@ -17,7 +17,8 @@ const GEOLOCATION_MAX_AGE_MS = 60_000;
 
 type MapViewProps = {
   ref?: Ref<LeafletMap>;
-  freeLand?: { key: number; data: CandidateSiteFeatureCollection };
+  freeLand?: CandidateSiteFeatureCollection;
+  dataVersion?: number;
   belowMinZoom?: boolean;
   takenFeatures?: RawOsmFeature[];
 };
@@ -25,6 +26,7 @@ type MapViewProps = {
 export function MapView({
   ref,
   freeLand,
+  dataVersion = 0,
   belowMinZoom = false,
   takenFeatures = [],
 }: MapViewProps) {
@@ -33,10 +35,10 @@ export function MapView({
   return (
     <MapContainer ref={ref} center={initialView.center} zoom={initialView.zoom} maxZoom={19}>
       <TileLayer attribution={OSM_ATTRIBUTION} url={OSM_TILE_URL} />
-      {!belowMinZoom && freeLand && freeLand.data.features.length > 0 && (
+      {!belowMinZoom && freeLand && freeLand.features.length > 0 && (
         // react-leaflet's GeoJSON ignores data updates after creation, so the key
         // must change per fetch to force a fresh layer.
-        <FreeLandLayer key={freeLand.key} data={freeLand.data} />
+        <FreeLandLayer key={dataVersion} data={freeLand} />
       )}
       <TakenSiteCheck features={takenFeatures} />
       <ViewportController />
