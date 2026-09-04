@@ -1,6 +1,8 @@
+import { centroid, area as turfArea } from '@turf/turf';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { SelectedFeatureProvider, useSelectedFeature } from '@/hooks/useSelectedFeature';
-import type { CandidateSiteFeature } from '@/types/geo';
+import { formatArea } from '@/lib/format';
+import type { CandidateSiteFeature, TakenSiteFeature } from '@/types/geo';
 import { SiteDetails } from './SiteDetails';
 
 const EMPTY_SITE: CandidateSiteFeature = {
@@ -27,7 +29,31 @@ const EMPTY_SITE: CandidateSiteFeature = {
   },
 };
 
-function Harness({ feature }: { feature: CandidateSiteFeature }) {
+const TAKEN_BUILDING: TakenSiteFeature = {
+  type: 'Feature',
+  id: 'way/9',
+  properties: { id: 'way/9', status: 'taken', tags: { building: 'yes' } },
+  geometry: {
+    type: 'Polygon',
+    coordinates: [
+      [
+        [21.0, 52.1],
+        [21.001, 52.1],
+        [21.001, 52.101],
+        [21.0, 52.101],
+        [21.0, 52.1],
+      ],
+    ],
+  },
+};
+
+const TAKEN_FOREST: TakenSiteFeature = {
+  ...TAKEN_BUILDING,
+  id: 'way/10',
+  properties: { id: 'way/10', status: 'taken', tags: { natural: 'wood' } },
+};
+
+function Harness({ feature }: { feature: CandidateSiteFeature | TakenSiteFeature }) {
   const { selectedFeature, selectFeature } = useSelectedFeature();
 
   return (
@@ -41,7 +67,7 @@ function Harness({ feature }: { feature: CandidateSiteFeature }) {
   );
 }
 
-function renderPanel(feature: CandidateSiteFeature) {
+function renderPanel(feature: CandidateSiteFeature | TakenSiteFeature) {
   return render(
     <SelectedFeatureProvider>
       <Harness feature={feature} />
@@ -79,5 +105,29 @@ describe('SiteDetails', () => {
 
     expect(screen.getByTestId('selection').textContent).toBe('none');
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('shows a taken notice naming the occupier above the property rows', () => {
+    renderPanel(TAKEN_BUILDING);
+
+    fireEvent.click(screen.getByText('select'));
+
+    expect(screen.getByRole('heading', { name: 'Taken site' })).toBeTruthy();
+    expect(screen.getByText('Building')).toBeTruthy();
+    // No Land use row — the notice carries the type for taken sites.
+    expect(screen.queryByText('Land use')).toBeNull();
+    // Area and coordinates are derived from the raw geometry.
+    expect(screen.getByText(formatArea(turfArea(TAKEN_BUILDING)))).toBeTruthy();
+    const [longitude, latitude] = centroid(TAKEN_BUILDING).geometry.coordinates;
+    expect(screen.getByText(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`)).toBeTruthy();
+    expect(screen.getByText('OSM way/9')).toBeTruthy();
+  });
+
+  it('names taken land from its land-use tags', () => {
+    renderPanel(TAKEN_FOREST);
+
+    fireEvent.click(screen.getByText('select'));
+
+    expect(screen.getByText('Forest')).toBeTruthy();
   });
 });

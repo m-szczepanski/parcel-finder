@@ -137,6 +137,14 @@ export function SiteDetails() {
         <SheetHeader>
           <SheetTitle>{summary?.isTaken ? 'Taken site' : summary?.landUseLabel}</SheetTitle>
           <SheetDescription>{summary ? `OSM ${summary.id}` : null}</SheetDescription>
+          {summary?.isTaken && (
+            <span
+              className="w-fit rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground"
+              data-slot="taken-notice"
+            >
+              {summary.landUseLabel}
+            </span>
+          )}
         </SheetHeader>
         {summary && (
           <>
