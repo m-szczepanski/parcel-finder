@@ -1,4 +1,6 @@
 import { render } from '@testing-library/react';
+import { GeoJSON as LeafletGeoJSON } from 'leaflet';
+import type { Layer, Map as LeafletMap, Path } from 'leaflet';
 import { MapContainer } from 'react-leaflet';
 import type { CandidateSiteFeatureCollection } from '@/types/geo';
 import { FreeLandLayer } from './FreeLandLayer';
@@ -43,6 +45,35 @@ const COLLECTION: CandidateSiteFeatureCollection = {
   ],
 };
 
+function renderLayer() {
+  const mapRef: { current: LeafletMap | null } = { current: null };
+
+  const view = render(
+    <MapContainer
+      ref={(map) => {
+        mapRef.current = map ?? null;
+      }}
+      center={[52.15, 21.05]}
+      zoom={15}
+    >
+      <FreeLandLayer data={COLLECTION} />
+    </MapContainer>,
+  );
+
+  return { mapRef, view };
+}
+
+function firstCandidatePath(map: LeafletMap): Path {
+  const layers: Layer[] = [];
+  map.eachLayer((layer) => {
+    if (layer instanceof LeafletGeoJSON) {
+      layers.push(...layer.getLayers());
+    }
+  });
+
+  return layers[0] as Path;
+}
+
 describe('FreeLandLayer', () => {
   it('renders one interactive path per candidate feature', () => {
     const { container } = render(
@@ -66,5 +97,20 @@ describe('FreeLandLayer', () => {
     expect(path?.getAttribute('stroke')).toBe('#059669');
     expect(path?.getAttribute('fill')).toBe('#10b981');
     expect(path?.getAttribute('fill-opacity')).toBe('0.15');
+  });
+
+  it('highlights on hover with the transparent gray style and reverts on mouseout', () => {
+    const { mapRef } = renderLayer();
+    const path = firstCandidatePath(mapRef.current!);
+
+    path.fire('mouseover');
+
+    expect(path.options.fillColor).toBe('#9ca3af');
+    expect(path.options.fillOpacity).toBe(0.3);
+
+    path.fire('mouseout');
+
+    expect(path.options.fillColor).toBe('#10b981');
+    expect(path.options.fillOpacity).toBe(0.15);
   });
 });
