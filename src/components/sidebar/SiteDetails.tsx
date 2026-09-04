@@ -5,6 +5,7 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
@@ -165,6 +166,11 @@ export function SiteDetails() {
               View on OpenStreetMap
               <ExternalLink className="size-3.5" aria-hidden />
             </a>
+            <SheetFooter>
+              <p className="text-xs text-muted-foreground">
+                Heuristic approximation, not a cadastral or legal source.
+              </p>
+            </SheetFooter>
           </>
         )}
       </SheetContent>

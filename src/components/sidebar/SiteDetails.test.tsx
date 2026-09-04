@@ -95,6 +95,7 @@ describe('SiteDetails', () => {
     expect(screen.getByText('View on OpenStreetMap').closest('a')?.getAttribute('href')).toBe(
       'https://www.openstreetmap.org/way/1',
     );
+    expect(screen.getByText('Heuristic approximation, not a cadastral or legal source.')).toBeTruthy();
   });
 
   it('closes on the close button and clears the selection', () => {
@@ -121,6 +122,7 @@ describe('SiteDetails', () => {
     const [longitude, latitude] = centroid(TAKEN_BUILDING).geometry.coordinates;
     expect(screen.getByText(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`)).toBeTruthy();
     expect(screen.getByText('OSM way/9')).toBeTruthy();
+    expect(screen.getByText('Heuristic approximation, not a cadastral or legal source.')).toBeTruthy();
   });
 
   it('names taken land from its land-use tags', () => {
