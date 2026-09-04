@@ -217,14 +217,15 @@ describe('normalizeViewportBounds', () => {
 describe('computeViewportSites', () => {
   it('derives free-land candidates and taken features from one split', () => {
     const forest = polygonFeature('way/wood-1', { natural: 'wood' }, ring(0, 0, 0.01, 0.01));
-    const building = polygonFeature('way/b-1', { building: 'yes' }, ring(0.003, 0.003, 0.007, 0.007));
     const meadow = polygonFeature('way/grass-1', { natural: 'meadow' }, ring(2, 2, 2.01, 2.01));
+    const building = polygonFeature('way/b-1', { building: 'yes' }, ring(2.003, 2.003, 2.007, 2.007));
 
     const { freeLand, takenFeatures } = computeViewportSites(collection([forest, building, meadow]));
 
-    // The meadow is the only empty candidate; the forest stays taken and the
-    // building is subtracted from it, never becoming a candidate itself.
+    // The meadow is the only empty candidate (the building punched a hole into
+    // it); the building and the forest stay raw and taken, buildings first.
     expect(freeLand.features.map((feature) => feature.id)).toEqual(['way/grass-1']);
+    expect(freeLand.features[0].geometry.coordinates).toHaveLength(2);
     expect(takenFeatures.map((feature) => feature.id)).toEqual(['way/b-1', 'way/wood-1']);
   });
 
