@@ -30,7 +30,7 @@ export default [
     },
   },
   {
-    files: ['src/hooks/useHoveredFeature.tsx', 'src/components/ui/*.tsx'],
+    files: ['src/hooks/useSelectedFeature.tsx', 'src/components/ui/*.tsx'],
     rules: {
       'react-refresh/only-export-components': 'off',
     },

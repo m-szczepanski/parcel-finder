@@ -53,6 +53,15 @@ export type RawOsmFeature = {
   };
 };
 
+// A raw OSM polygon selected through the map-level taken-site check: the raw
+// properties (tags drive the panel content) plus the discriminating status.
+export type TakenSiteFeature = {
+  type: 'Feature';
+  id: string;
+  properties: RawOsmFeatureProperties & { status: 'taken' };
+  geometry: RawOsmFeature['geometry'];
+};
+
 export type RawOsmFeatureCollection = {
   type: 'FeatureCollection';
   features: RawOsmFeature[];
@@ -65,4 +74,4 @@ export type ViewportBounds = {
   east: number;
 };
 
-export type HoveredFeatureState = CandidateSiteFeature | null;
+export type SelectedFeatureState = CandidateSiteFeature | TakenSiteFeature | null;
