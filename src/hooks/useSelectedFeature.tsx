@@ -12,8 +12,7 @@ export function SelectedFeatureProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       selectedFeature,
-      selectFeature: (feature: CandidateSiteFeature | TakenSiteFeature) =>
-        setSelectedFeature(feature),
+      selectFeature: setSelectedFeature,
       clearSelection: () => setSelectedFeature(null),
     }),
     [selectedFeature],
