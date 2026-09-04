@@ -6,7 +6,7 @@ import { SiteDetails } from '@/components/sidebar/SiteDetails';
 import { Toaster } from '@/components/ui/sonner';
 import { SelectedFeatureProvider } from '@/hooks/useSelectedFeature';
 import { useViewportData } from '@/hooks/useViewportData';
-import { computeFreeLand, selectTakenFeatures } from '@/lib/geometry';
+import { computeViewportSites } from '@/lib/geometry';
 
 const MAP_DATA_ERROR_TOAST_ID = 'map-data-error';
 
@@ -24,28 +24,14 @@ function App() {
     }
   }, [error]);
 
-  // The version key forces react-leaflet to recreate the GeoJSON layer per fetch.
-  const freeLand = useMemo(() => {
-    const buildings = data.features.filter((feature) => 'building' in feature.properties.tags);
-    const landuse = data.features.filter((feature) => !('building' in feature.properties.tags));
-
-    return {
-      key: version,
-      data: computeFreeLand(
-        { type: 'FeatureCollection', features: landuse },
-        { type: 'FeatureCollection', features: buildings },
-      ),
-    };
-  }, [data, version]);
-
-  const takenFeatures = useMemo(() => selectTakenFeatures(data), [data]);
+  const { freeLand, takenFeatures } = useMemo(() => computeViewportSites(data), [data]);
 
   return (
     <SelectedFeatureProvider>
       <main className="relative h-dvh w-full overflow-hidden">
         <MapView
           ref={setMap}
-          freeLand={freeLand}
+          freeLand={{ key: version, data: freeLand }}
           belowMinZoom={belowMinZoom}
           takenFeatures={takenFeatures}
         />

@@ -1,6 +1,12 @@
 import type { Position } from 'geojson';
 import type { RawOsmFeature, RawOsmFeatureCollection } from '@/types/geo';
-import { computeFreeLand, MIN_AREA_M2, classifyLandUse, normalizeViewportBounds, selectTakenFeatures } from './geometry';
+import {
+  computeFreeLand,
+  computeViewportSites,
+  MIN_AREA_M2,
+  classifyLandUse,
+  normalizeViewportBounds,
+} from './geometry';
 
 function ring(west: number, south: number, east: number, north: number): Position[] {
   return [
@@ -208,28 +214,24 @@ describe('normalizeViewportBounds', () => {
   });
 });
 
-describe('selectTakenFeatures', () => {
-  it('returns building polygons before taken land polygons', () => {
+describe('computeViewportSites', () => {
+  it('derives free-land candidates and taken features from one split', () => {
     const forest = polygonFeature('way/wood-1', { natural: 'wood' }, ring(0, 0, 0.01, 0.01));
-    const building = polygonFeature('way/b-1', { building: 'yes' }, ring(0, 0, 0.005, 0.005));
+    const building = polygonFeature('way/b-1', { building: 'yes' }, ring(0.003, 0.003, 0.007, 0.007));
+    const meadow = polygonFeature('way/grass-1', { natural: 'meadow' }, ring(2, 2, 2.01, 2.01));
 
-    const result = selectTakenFeatures(collection([forest, building]));
+    const { freeLand, takenFeatures } = computeViewportSites(collection([forest, building, meadow]));
 
-    expect(result.map((feature) => feature.id)).toEqual(['way/b-1', 'way/wood-1']);
+    // The meadow is the only empty candidate; the forest stays taken and the
+    // building is subtracted from it, never becoming a candidate itself.
+    expect(freeLand.features.map((feature) => feature.id)).toEqual(['way/grass-1']);
+    expect(takenFeatures.map((feature) => feature.id)).toEqual(['way/b-1', 'way/wood-1']);
   });
 
-  it('keeps taken land-use types but drops empty ones', () => {
-    const forest = polygonFeature('way/wood-1', { natural: 'wood' }, ring(0, 0, 0.01, 0.01));
-    const water = polygonFeature('way/water-1', { natural: 'water' }, ring(1, 1, 1.01, 1.01));
-    const park = polygonFeature('way/park-1', { leisure: 'park' }, ring(2, 2, 2.01, 2.01));
-    const meadow = polygonFeature('way/grass-1', { natural: 'meadow' }, ring(3, 3, 3.01, 3.01));
-
-    const result = selectTakenFeatures(collection([forest, water, park, meadow]));
-
-    expect(result.map((feature) => feature.id)).toEqual(['way/wood-1', 'way/water-1', 'way/park-1']);
-  });
-
-  it('returns nothing for an empty viewport', () => {
-    expect(selectTakenFeatures(collection([]))).toEqual([]);
+  it('returns empty results for an empty viewport', () => {
+    expect(computeViewportSites(collection([]))).toEqual({
+      freeLand: { type: 'FeatureCollection', features: [] },
+      takenFeatures: [],
+    });
   });
 });
