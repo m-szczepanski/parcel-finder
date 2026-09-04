@@ -12,7 +12,7 @@ const MAP_DATA_ERROR_TOAST_ID = 'map-data-error';
 function App() {
   const [map, setMap] = useState<LeafletMap | null>(null);
 
-  const { data, error } = useViewportData(map);
+  const { data, error, belowMinZoom, version } = useViewportData(map);
 
   useEffect(() => {
     if (error) {
@@ -23,23 +23,23 @@ function App() {
     }
   }, [error]);
 
-  // Temporary manual-test wiring for step 03 — replaced by the FreeLandLayer in step 04.
-  const debugFreeLand = useMemo(() => {
+  // The version key forces react-leaflet to recreate the GeoJSON layer per fetch.
+  const freeLand = useMemo(() => {
     const buildings = data.features.filter((feature) => 'building' in feature.properties.tags);
     const landuse = data.features.filter((feature) => !('building' in feature.properties.tags));
 
     return {
-      key: Date.now(),
+      key: version,
       data: computeFreeLand(
         { type: 'FeatureCollection', features: landuse },
         { type: 'FeatureCollection', features: buildings },
       ),
     };
-  }, [data]);
+  }, [data, version]);
 
   return (
     <main className="relative h-dvh w-full overflow-hidden">
-      <MapView ref={setMap} freeLand={debugFreeLand} />
+      <MapView ref={setMap} freeLand={freeLand} belowMinZoom={belowMinZoom} />
       <SiteDetails />
       <Toaster position="bottom-right" />
     </main>
