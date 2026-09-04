@@ -1,6 +1,12 @@
 import type { Position } from 'geojson';
 import type { RawOsmFeature, RawOsmFeatureCollection } from '@/types/geo';
-import { computeFreeLand, MIN_AREA_M2, classifyLandUse, normalizeViewportBounds } from './geometry';
+import {
+  computeFreeLand,
+  computeViewportSites,
+  MIN_AREA_M2,
+  classifyLandUse,
+  normalizeViewportBounds,
+} from './geometry';
 
 function ring(west: number, south: number, east: number, north: number): Position[] {
   return [
@@ -205,5 +211,28 @@ describe('normalizeViewportBounds', () => {
     const bounds = { south: 3, west: 4, north: 1, east: 2 };
 
     expect(normalizeViewportBounds(bounds)).toEqual({ south: 1, west: 2, north: 3, east: 4 });
+  });
+});
+
+describe('computeViewportSites', () => {
+  it('derives free-land candidates and taken features from one split', () => {
+    const forest = polygonFeature('way/wood-1', { natural: 'wood' }, ring(0, 0, 0.01, 0.01));
+    const meadow = polygonFeature('way/grass-1', { natural: 'meadow' }, ring(2, 2, 2.01, 2.01));
+    const building = polygonFeature('way/b-1', { building: 'yes' }, ring(2.003, 2.003, 2.007, 2.007));
+
+    const { freeLand, takenFeatures } = computeViewportSites(collection([forest, building, meadow]));
+
+    // The meadow is the only empty candidate (the building punched a hole into
+    // it); the building and the forest stay raw and taken, buildings first.
+    expect(freeLand.features.map((feature) => feature.id)).toEqual(['way/grass-1']);
+    expect(freeLand.features[0].geometry.coordinates).toHaveLength(2);
+    expect(takenFeatures.map((feature) => feature.id)).toEqual(['way/b-1', 'way/wood-1']);
+  });
+
+  it('returns empty results for an empty viewport', () => {
+    expect(computeViewportSites(collection([]))).toEqual({
+      freeLand: { type: 'FeatureCollection', features: [] },
+      takenFeatures: [],
+    });
   });
 });

@@ -1,7 +1,7 @@
 # 04 — Free-land layer
 
 **Depends on:** 02 + 03 (data + computed polygons)
-**Status:** not started
+**Status:** done
 
 ## Goal
 
@@ -18,43 +18,46 @@ Render the computed "candidate free land" polygons on the map and make them inte
 
 ## Tasks
 
-- [ ] `src/components/map/FreeLandLayer.tsx`: react-leaflet `<GeoJSON>` rendering the
+- [x] `src/components/map/FreeLandLayer.tsx`: react-leaflet `<GeoJSON>` rendering the
       FeatureCollection from `useViewportData`.
-- [ ] Default style (subtle green fill, ~0.15 opacity, visible border) and hover style —
+- [x] Default style (subtle green fill, ~0.15 opacity, visible border) and hover style —
       **transparent gray** fill + gray borders (product spec; e.g. Tailwind `gray-400` /
       theme `muted-foreground`) — as plain style objects/functions.
-- [ ] `onEachFeature`: `mouseover` -> apply the gray hover style; `mouseout` -> revert. Hover is
+- [x] `onEachFeature`: `mouseover` -> apply the gray hover style; `mouseout` -> revert. Hover is
       style-only — it must not touch shared state or the panel (product decision: the panel
       opens on click).
-- [ ] Click to select: `click` on an empty polygon stores the feature via the selection context
+- [x] Click to select: `click` on an empty polygon stores the feature via the selection context
       (opens the side panel, built in step 05) and stops propagation; the selected polygon keeps
       the gray style until deselected.
-- [ ] Map-level taken-site check (tech doc section 3.7): on a map click that no polygon layer
+- [x] Map-level taken-site check (tech doc section 3.7): on a map click that no polygon layer
       consumed, run `turf.booleanPointInPolygon` against the cached raw building/taken polygons;
       on a hit, select that feature with `status: 'taken'` (panel shows the taken notice); on a
       miss, clear the selection (closes the panel). Taken sites therefore get no hover effect by
       construction — they are not in the interactive layer.
-- [ ] Rename/repurpose the context: `useHoveredFeature` -> `useSelectedFeature` with
+- [x] Rename/repurpose the context: `useHoveredFeature` -> `useSelectedFeature` with
       `selectedFeature` / `selectFeature` / `clearSelection` (feature or `null`); update
       `types/geo.ts` (`HoveredFeatureState` -> `SelectedFeatureState`, add `status`).
-- [ ] Force re-render when data changes — react-leaflet's `GeoJSON` does not diff in place;
+- [x] Force re-render when data changes — react-leaflet's `GeoJSON` does not diff in place;
       pass a changing `key` (e.g. data version counter from `useViewportData`).
-- [ ] Hide the layer when `belowMinZoom`.
+- [x] Hide the layer when `belowMinZoom`.
 
 ## Implementation notes
 
-- Keep hover state changes cheap: `setStyle` on the layer, not a data re-render.
-- If dense areas feel sluggish in SVG, switch the layer to canvas rendering
-  (`MapContainer` `preferCanvas`) — measure first, note result in the step PR.
-- Do not couple this component to the side panel; the context provider is the only contract.
+- Kept SVG rendering (default) — no `preferCanvas` switch. Densities in normal use felt fine;
+  revisit alongside the step-10 heuristics tuning if dense areas feel sluggish.
+- The step's "renders above zoom 15" gate is `MIN_ZOOM` from `useViewportData`, widened to 13
+  during step 02 — the layer renders above `MIN_ZOOM` and is hidden below it.
+- The selection context is mounted in `App` around map and panel; `SiteDetails` consumes it in
+  step 05.
 
 ## Exit criteria
 
-- [ ] Polygons render above zoom 15; hovering empty sites highlights them transparent gray and
-      reverts correctly; taken areas (buildings, forest, water) produce no hover effect.
-- [ ] Clicking an empty polygon opens the side panel with its data; clicking a taken site opens
-      the panel with the taken notice; clicking bare map closes it.
-- [ ] lint / typecheck / test / build all green.
+- [x] Polygons render above `MIN_ZOOM`; hovering empty sites highlights them transparent gray
+      and reverts correctly; taken areas (buildings, forest, water) produce no hover effect.
+- [x] Clicking an empty polygon stores its selection (panel opens with the data in step 05);
+      clicking a taken site selects it with `status: 'taken'` (taken notice in step 05);
+      clicking bare map clears the selection.
+- [x] lint / typecheck / test / build all green.
 
 ## Files touched
 

@@ -37,6 +37,7 @@ type ViewportDataResult = {
   loading: boolean;
   error: Error | null;
   belowMinZoom: boolean;
+  version: number;
 };
 
 function readBounds(map: LeafletMap): ViewportBounds {
@@ -62,6 +63,9 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [belowMinZoom, setBelowMinZoom] = useState(true);
+  // Bumped on every data change — react-leaflet's GeoJSON ignores data prop
+  // updates after creation, so consumers key the layer on this counter.
+  const [version, setVersion] = useState(0);
   const requestIdRef = useRef(0);
   const fetchedBoundsRef = useRef<ViewportBounds | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -73,10 +77,15 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
 
     let timer: ReturnType<typeof setTimeout> | undefined;
 
+    const applyData = (collection: RawOsmFeatureCollection) => {
+      setData(collection);
+      setVersion((current) => current + 1);
+    };
+
     const fetchViewport = () => {
       if (map.getZoom() < MIN_ZOOM) {
         fetchedBoundsRef.current = null;
-        setData(EMPTY_COLLECTION);
+        applyData(EMPTY_COLLECTION);
         setLoading(false);
         setError(null);
         setBelowMinZoom(true);
@@ -113,7 +122,7 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
           if (requestIdRef.current !== requestId) return;
           const collection = overpassToGeoJSON(response.elements);
           fetchedBoundsRef.current = bounds;
-          setData(collection);
+          applyData(collection);
           logFetchedCounts(bounds, response.elements.length, collection.features.length);
         })
         .catch((cause: unknown) => {
@@ -144,5 +153,5 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
     };
   }, [map]);
 
-  return { data, loading, error, belowMinZoom };
+  return { data, loading, error, belowMinZoom, version };
 }

@@ -60,6 +60,38 @@ const TAKEN_LAND_USE_TYPES: ReadonlySet<LandUseType> = new Set(['forest', 'water
 type PolygonFeature = Feature<Polygon | MultiPolygon>;
 type IndexedBuilding = { feature: RawOsmFeature; box: BBox };
 
+// One derivation pass over the raw viewport data: the building/landuse split
+// feeds both the free-land candidates and the click-time taken-site check, so
+// it happens here once instead of in every consumer (tech doc 3.7).
+export function computeViewportSites(data: RawOsmFeatureCollection): {
+  freeLand: CandidateSiteFeatureCollection;
+  takenFeatures: RawOsmFeature[];
+} {
+  const buildings: RawOsmFeature[] = [];
+  const landuse: RawOsmFeature[] = [];
+
+  for (const feature of data.features) {
+    if ('building' in feature.properties.tags) {
+      buildings.push(feature);
+    } else {
+      landuse.push(feature);
+    }
+  }
+
+  return {
+    freeLand: computeFreeLand(
+      { type: 'FeatureCollection', features: landuse },
+      { type: 'FeatureCollection', features: buildings },
+    ),
+    // Taken sites for the click check: buildings first, then taken land
+    // polygons — the order matters when polygons overlap.
+    takenFeatures: [
+      ...buildings,
+      ...landuse.filter((feature) => TAKEN_LAND_USE_TYPES.has(classifyLandUse(feature.properties.tags))),
+    ],
+  };
+}
+
 export function computeFreeLand(
   landuse: RawOsmFeatureCollection,
   buildings: RawOsmFeatureCollection,

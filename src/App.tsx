@@ -4,15 +4,16 @@ import type { Map as LeafletMap } from 'leaflet';
 import { MapView } from '@/components/map/MapView';
 import { SiteDetails } from '@/components/sidebar/SiteDetails';
 import { Toaster } from '@/components/ui/sonner';
+import { SelectedFeatureProvider } from '@/hooks/useSelectedFeature';
 import { useViewportData } from '@/hooks/useViewportData';
-import { computeFreeLand } from '@/lib/geometry';
+import { computeViewportSites } from '@/lib/geometry';
 
 const MAP_DATA_ERROR_TOAST_ID = 'map-data-error';
 
 function App() {
   const [map, setMap] = useState<LeafletMap | null>(null);
 
-  const { data, error } = useViewportData(map);
+  const { data, error, belowMinZoom, version } = useViewportData(map);
 
   useEffect(() => {
     if (error) {
@@ -23,26 +24,22 @@ function App() {
     }
   }, [error]);
 
-  // Temporary manual-test wiring for step 03 — replaced by the FreeLandLayer in step 04.
-  const debugFreeLand = useMemo(() => {
-    const buildings = data.features.filter((feature) => 'building' in feature.properties.tags);
-    const landuse = data.features.filter((feature) => !('building' in feature.properties.tags));
-
-    return {
-      key: Date.now(),
-      data: computeFreeLand(
-        { type: 'FeatureCollection', features: landuse },
-        { type: 'FeatureCollection', features: buildings },
-      ),
-    };
-  }, [data]);
+  const { freeLand, takenFeatures } = useMemo(() => computeViewportSites(data), [data]);
 
   return (
-    <main className="relative h-dvh w-full overflow-hidden">
-      <MapView ref={setMap} freeLand={debugFreeLand} />
-      <SiteDetails />
-      <Toaster position="bottom-right" />
-    </main>
+    <SelectedFeatureProvider>
+      <main className="relative h-dvh w-full overflow-hidden">
+        <MapView
+          ref={setMap}
+          freeLand={freeLand}
+          dataVersion={version}
+          belowMinZoom={belowMinZoom}
+          takenFeatures={takenFeatures}
+        />
+        <SiteDetails />
+        <Toaster position="bottom-right" />
+      </main>
+    </SelectedFeatureProvider>
   );
 }
 

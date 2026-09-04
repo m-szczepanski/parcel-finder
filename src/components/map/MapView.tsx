@@ -1,43 +1,71 @@
 import { useEffect, useState, type Ref } from 'react';
-import { GeoJSON, MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
-import type { Map as LeafletMap, PathOptions } from 'leaflet';
+import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
+import { booleanPointInPolygon, point } from '@turf/turf';
+import type { Map as LeafletMap } from 'leaflet';
+import { FreeLandLayer } from '@/components/map/FreeLandLayer';
 import { loadLastView, saveLastView } from '@/lib/mapState';
-import type { CandidateSiteFeatureCollection } from '@/types/geo';
+import { useSelectedFeature } from '@/hooks/useSelectedFeature';
+import type { CandidateSiteFeatureCollection, RawOsmFeature } from '@/types/geo';
 
 const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 const OSM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-const FREE_LAND_STYLE: PathOptions = {
-  color: '#f97316',
-  fillColor: '#f97316',
-  fillOpacity: 0.25,
-  weight: 1,
-};
-
 const GEOLOCATION_TIMEOUT_MS = 5000;
 const GEOLOCATION_MAX_AGE_MS = 60_000;
 
 type MapViewProps = {
   ref?: Ref<LeafletMap>;
-  freeLand?: { key: number; data: CandidateSiteFeatureCollection };
+  freeLand?: CandidateSiteFeatureCollection;
+  dataVersion?: number;
+  belowMinZoom?: boolean;
+  takenFeatures?: RawOsmFeature[];
 };
 
-export function MapView({ ref, freeLand }: MapViewProps) {
+export function MapView({
+  ref,
+  freeLand,
+  dataVersion = 0,
+  belowMinZoom = false,
+  takenFeatures = [],
+}: MapViewProps) {
   const [initialView] = useState(loadLastView);
 
   return (
     <MapContainer ref={ref} center={initialView.center} zoom={initialView.zoom} maxZoom={19}>
       <TileLayer attribution={OSM_ATTRIBUTION} url={OSM_TILE_URL} />
-      {freeLand && freeLand.data.features.length > 0 && (
+      {!belowMinZoom && freeLand && freeLand.features.length > 0 && (
         // react-leaflet's GeoJSON ignores data updates after creation, so the key
         // must change per fetch to force a fresh layer.
-        <GeoJSON key={freeLand.key} data={freeLand.data} style={FREE_LAND_STYLE} />
+        <FreeLandLayer key={dataVersion} data={freeLand} />
       )}
+      <TakenSiteCheck features={takenFeatures} />
       <ViewportController />
     </MapContainer>
   );
+}
+
+// A click no polygon layer consumed lands here (tech doc 3.7): the point is
+// checked against the raw taken features (buildings first, then taken land) —
+// a hit selects the site as taken for the panel, a miss closes it.
+function TakenSiteCheck({ features }: { features: RawOsmFeature[] }) {
+  const { selectFeature, clearSelection } = useSelectedFeature();
+
+  useMapEvents({
+    click: (event) => {
+      const clicked = point([event.latlng.lng, event.latlng.lat]);
+      const hit = features.find((feature) => booleanPointInPolygon(clicked, feature));
+
+      if (hit) {
+        selectFeature({ ...hit, properties: { ...hit.properties, status: 'taken' } });
+      } else {
+        clearSelection();
+      }
+    },
+  });
+
+  return null;
 }
 
 function ViewportController() {

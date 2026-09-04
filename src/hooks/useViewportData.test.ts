@@ -180,7 +180,7 @@ describe('useViewportData', () => {
   it('refetches once the viewport moves beyond the fetched area', async () => {
     const fetchMock = stubOverpassFetch({ elements: [closedWay] });
     const map = createFakeMap(13);
-    renderHook(() => useViewportData(map));
+    const { result } = renderHook(() => useViewportData(map));
 
     act(() => {
       vi.advanceTimersByTime(DEBOUNCE_MS);
@@ -188,6 +188,7 @@ describe('useViewportData', () => {
     await act(async () => {});
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.version).toBe(1);
 
     act(() => {
       map.setBounds(52.1, 21.26, 52.2, 21.36);
@@ -199,6 +200,7 @@ describe('useViewportData', () => {
     await act(async () => {});
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.current.version).toBe(2);
   });
 
   it('collapses rapid map moves into a single request per settled move', async () => {
