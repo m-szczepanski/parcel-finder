@@ -23,8 +23,9 @@ const HOVER_STYLE: PathOptions = {
   weight: 1,
 };
 
-// The layer currently carrying the selection style, tracked by feature id so
-// a stale layer (e.g. after a remount on new data) can never be mistyped.
+// The layer currently styled as selected, kept with its feature id so the
+// revert effect can tell when the styled layer no longer matches the
+// selection held in context.
 type SelectedLayer = { id: string; layer: Path };
 
 type FreeLandLayerProps = {
@@ -53,6 +54,7 @@ export function FreeLandLayer({ data }: FreeLandLayerProps) {
       onEachFeature={(rawFeature, layer) => {
         const feature = rawFeature as CandidateSiteFeature;
         const path = layer as Path;
+        const isSelectionStyled = () => selectedLayerRef.current?.layer === path;
 
         // Remounts (new data key) must restore the gray style on the polygon
         // that is still selected in the context.
@@ -63,12 +65,12 @@ export function FreeLandLayer({ data }: FreeLandLayerProps) {
 
         path.on({
           mouseover: () => {
-            if (path !== selectedLayerRef.current?.layer) {
+            if (!isSelectionStyled()) {
               path.setStyle(HOVER_STYLE);
             }
           },
           mouseout: () => {
-            if (path !== selectedLayerRef.current?.layer) {
+            if (!isSelectionStyled()) {
               path.setStyle(DEFAULT_STYLE);
             }
           },
@@ -76,7 +78,7 @@ export function FreeLandLayer({ data }: FreeLandLayerProps) {
             // Keep the click from reaching the map-level taken-site check.
             DomEvent.stopPropagation(event);
 
-            if (path !== selectedLayerRef.current?.layer) {
+            if (!isSelectionStyled()) {
               selectedLayerRef.current?.layer.setStyle(DEFAULT_STYLE);
               selectedLayerRef.current = { id: feature.properties.id, layer: path };
               path.setStyle(HOVER_STYLE);
