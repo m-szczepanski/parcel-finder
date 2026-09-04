@@ -60,6 +60,24 @@ const TAKEN_LAND_USE_TYPES: ReadonlySet<LandUseType> = new Set(['forest', 'water
 type PolygonFeature = Feature<Polygon | MultiPolygon>;
 type IndexedBuilding = { feature: RawOsmFeature; box: BBox };
 
+// Raw viewport features that count as "taken" for the click-time taken-site
+// check (tech doc 3.7): building polygons first, then taken landuse/natural
+// polygons — the order matters when polygons overlap.
+export function selectTakenFeatures(data: RawOsmFeatureCollection): RawOsmFeature[] {
+  const buildings: RawOsmFeature[] = [];
+  const takenLand: RawOsmFeature[] = [];
+
+  for (const feature of data.features) {
+    if ('building' in feature.properties.tags) {
+      buildings.push(feature);
+    } else if (TAKEN_LAND_USE_TYPES.has(classifyLandUse(feature.properties.tags))) {
+      takenLand.push(feature);
+    }
+  }
+
+  return [...buildings, ...takenLand];
+}
+
 export function computeFreeLand(
   landuse: RawOsmFeatureCollection,
   buildings: RawOsmFeatureCollection,

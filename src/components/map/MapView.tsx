@@ -1,9 +1,11 @@
 import { useEffect, useState, type Ref } from 'react';
 import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
+import { booleanPointInPolygon, point } from '@turf/turf';
 import type { Map as LeafletMap } from 'leaflet';
 import { FreeLandLayer } from '@/components/map/FreeLandLayer';
 import { loadLastView, saveLastView } from '@/lib/mapState';
-import type { CandidateSiteFeatureCollection } from '@/types/geo';
+import { useSelectedFeature } from '@/hooks/useSelectedFeature';
+import type { CandidateSiteFeatureCollection, RawOsmFeature } from '@/types/geo';
 
 const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
@@ -17,9 +19,15 @@ type MapViewProps = {
   ref?: Ref<LeafletMap>;
   freeLand?: { key: number; data: CandidateSiteFeatureCollection };
   belowMinZoom?: boolean;
+  takenFeatures?: RawOsmFeature[];
 };
 
-export function MapView({ ref, freeLand, belowMinZoom = false }: MapViewProps) {
+export function MapView({
+  ref,
+  freeLand,
+  belowMinZoom = false,
+  takenFeatures = [],
+}: MapViewProps) {
   const [initialView] = useState(loadLastView);
 
   return (
@@ -30,9 +38,32 @@ export function MapView({ ref, freeLand, belowMinZoom = false }: MapViewProps) {
         // must change per fetch to force a fresh layer.
         <FreeLandLayer key={freeLand.key} data={freeLand.data} />
       )}
+      <TakenSiteCheck features={takenFeatures} />
       <ViewportController />
     </MapContainer>
   );
+}
+
+// A click no polygon layer consumed lands here (tech doc 3.7): the point is
+// checked against the raw taken features (buildings first, then taken land) —
+// a hit selects the site as taken for the panel, a miss closes it.
+function TakenSiteCheck({ features }: { features: RawOsmFeature[] }) {
+  const { selectFeature, clearSelection } = useSelectedFeature();
+
+  useMapEvents({
+    click: (event) => {
+      const clicked = point([event.latlng.lng, event.latlng.lat]);
+      const hit = features.find((feature) => booleanPointInPolygon(clicked, feature));
+
+      if (hit) {
+        selectFeature({ ...hit, properties: { ...hit.properties, status: 'taken' } });
+      } else {
+        clearSelection();
+      }
+    },
+  });
+
+  return null;
 }
 
 function ViewportController() {

@@ -6,7 +6,7 @@ import { SiteDetails } from '@/components/sidebar/SiteDetails';
 import { Toaster } from '@/components/ui/sonner';
 import { SelectedFeatureProvider } from '@/hooks/useSelectedFeature';
 import { useViewportData } from '@/hooks/useViewportData';
-import { computeFreeLand } from '@/lib/geometry';
+import { computeFreeLand, selectTakenFeatures } from '@/lib/geometry';
 
 const MAP_DATA_ERROR_TOAST_ID = 'map-data-error';
 
@@ -38,10 +38,17 @@ function App() {
     };
   }, [data, version]);
 
+  const takenFeatures = useMemo(() => selectTakenFeatures(data), [data]);
+
   return (
     <SelectedFeatureProvider>
       <main className="relative h-dvh w-full overflow-hidden">
-        <MapView ref={setMap} freeLand={freeLand} belowMinZoom={belowMinZoom} />
+        <MapView
+          ref={setMap}
+          freeLand={freeLand}
+          belowMinZoom={belowMinZoom}
+          takenFeatures={takenFeatures}
+        />
         <SiteDetails />
         <Toaster position="bottom-right" />
       </main>
