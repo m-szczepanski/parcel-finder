@@ -1,7 +1,7 @@
 # 07 — Viewport caching
 
 **Depends on:** 02 (fetch pipeline to cache)
-**Status:** not started
+**Status:** done
 
 ## Goal
 
@@ -17,13 +17,13 @@ grid-snapped keys instead.
 
 ## Tasks
 
-- [ ] Snap bboxes to a ~0.01-degree grid: `makeCacheKey` rounds each edge; `useViewportData`
+- [x] Snap bboxes to a ~0.01-degree grid: `makeCacheKey` rounds each edge; `useViewportData`
       fetches the **snapped** bbox (not the raw viewport) so cache hits are exact.
-- [ ] Bounded cache: cap at ~50 entries, evict oldest via insertion order (`Map` iteration);
+- [x] Bounded cache: cap at ~50 entries, evict oldest via insertion order (`Map` iteration);
       prevents unbounded memory on a long session.
-- [ ] Keep `clearViewportCache` exposed for a future manual "refresh area" action (not built
+- [x] Keep `clearViewportCache` exposed for a future manual "refresh area" action (not built
       in this step).
-- [ ] Extend cache tests: two nearby bboxes inside one grid cell share a key; eviction
+- [x] Extend cache tests: two nearby bboxes inside one grid cell share a key; eviction
       respects the cap.
 
 ## Implementation notes
@@ -35,10 +35,10 @@ grid-snapped keys instead.
 
 ## Exit criteria
 
-- [ ] Panning slightly within the same area produces zero network requests.
-- [ ] Crossing a grid boundary refetches only the new area.
-- [ ] Cache tests green including eviction.
-- [ ] lint / typecheck / test / build all green.
+- [x] Panning slightly within the same area produces zero network requests.
+- [x] Crossing a grid boundary refetches only the new area.
+- [x] Cache tests green including eviction.
+- [x] lint / typecheck / test / build all green.
 
 ## Files touched
 

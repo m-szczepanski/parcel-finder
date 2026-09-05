@@ -33,7 +33,7 @@ containing buildings will count as taken as a whole.
 | 04   | Free-land layer        | done             |
 | 05   | Side panel (Sheet)     | done             |
 | 06   | Basemap toggle         | done             |
-| 07   | Viewport caching       | not started      |
+| 07   | Viewport caching       | done             |
 | 08   | States and feedback    | not started      |
 | 09   | Proxy: build or delete | pending decision |
 | 10   | Heuristics tuning      | not started      |
