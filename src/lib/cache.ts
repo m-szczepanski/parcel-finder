@@ -6,6 +6,9 @@ const cache = new Map<string, RawOsmFeatureCollection>();
 // cache entry, so small pans reuse data instead of refetching.
 const GRID_SIZE = 0.01;
 
+// Keeps memory bounded on long sessions; the oldest area is dropped first.
+export const MAX_CACHE_ENTRIES = 50;
+
 function snapEdge(value: number, round: (scaled: number) => number): number {
   return round(value / GRID_SIZE) * GRID_SIZE;
 }
@@ -37,7 +40,16 @@ export function setCachedViewportData(
   bounds: ViewportBounds,
   data: RawOsmFeatureCollection,
 ): void {
-  cache.set(makeCacheKey(bounds), data);
+  const key = makeCacheKey(bounds);
+  // Re-inserting refreshes the entry's position so a refetched area is not the
+  // next one evicted.
+  cache.delete(key);
+  while (cache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey === undefined) break;
+    cache.delete(oldestKey);
+  }
+  cache.set(key, data);
 }
 
 export function clearViewportCache(): void {
