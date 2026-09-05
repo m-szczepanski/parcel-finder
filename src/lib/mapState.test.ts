@@ -1,6 +1,15 @@
-import { DEFAULT_VIEW, loadLastView, saveLastView, type StorageLike } from './mapState';
+import {
+  DEFAULT_BASEMAP,
+  DEFAULT_VIEW,
+  loadBasemap,
+  loadLastView,
+  saveBasemap,
+  saveLastView,
+  type StorageLike,
+} from './mapState';
 
 const STORAGE_KEY = 'parcel-finder:last-view';
+const BASEMAP_STORAGE_KEY = 'parcel-finder:basemap';
 
 function createMemoryStorage(): StorageLike & { clear: () => void } {
   const store = new Map<string, string>();
@@ -43,5 +52,21 @@ describe('mapState', () => {
 
     storage.setItem(STORAGE_KEY, JSON.stringify({ center: [52.23, 21.01], zoom: 42 }));
     expect(loadLastView(storage)).toEqual(DEFAULT_VIEW);
+  });
+
+  it('returns the default basemap when nothing is stored', () => {
+    expect(loadBasemap(storage)).toBe(DEFAULT_BASEMAP);
+  });
+
+  it('round-trips a saved basemap', () => {
+    saveBasemap('satellite', storage);
+
+    expect(loadBasemap(storage)).toBe('satellite');
+  });
+
+  it('falls back to the default basemap on an invalid value', () => {
+    storage.setItem(BASEMAP_STORAGE_KEY, 'hybrid');
+
+    expect(loadBasemap(storage)).toBe(DEFAULT_BASEMAP);
   });
 });
