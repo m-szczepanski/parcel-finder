@@ -7,6 +7,10 @@ import {
 } from './cache';
 
 describe('viewport cache', () => {
+  beforeEach(() => {
+    clearViewportCache();
+  });
+
   it('stores and retrieves data by bbox key', () => {
     const bounds = { south: 1, west: 2, north: 3, east: 4 };
     const data = { type: 'FeatureCollection' as const, features: [] };
@@ -21,7 +25,6 @@ describe('viewport cache', () => {
   });
 
   it('reuses one entry for nearby bboxes within the same grid cells', () => {
-    clearViewportCache();
     const bounds = { south: 52.221, west: 21.034, north: 52.227, east: 21.038 };
     const nearby = { south: 52.224, west: 21.036, north: 52.229, east: 21.039 };
     const data = { type: 'FeatureCollection' as const, features: [] };
@@ -34,7 +37,6 @@ describe('viewport cache', () => {
   });
 
   it('evicts the oldest entry once the cache exceeds the cap', () => {
-    clearViewportCache();
     const data = { type: 'FeatureCollection' as const, features: [] };
     const boundsAt = (i: number) => ({ south: i, west: i, north: i + 0.5, east: i + 0.5 });
 
