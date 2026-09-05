@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Map as LeafletMap } from 'leaflet';
 import { fetchOverpassData, overpassToGeoJSON } from '@/lib/overpass';
+import { getCachedViewportData, setCachedViewportData, snapBounds } from '@/lib/cache';
 import type { RawOsmFeatureCollection, ViewportBounds } from '@/types/geo';
 
 // Widened from the originally documented 15 so candidates show across a wider zoom
@@ -107,6 +108,23 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
         return;
       }
 
+      // Fetch the grid-snapped bbox instead of the raw viewport: equal snapped
+      // bboxes share one cache entry, so returning to an area costs no network
+      // round-trip (docs section 3.4).
+      const snapped = snapBounds(bounds);
+
+      const cached = getCachedViewportData(snapped);
+      if (cached) {
+        // Retire any superseded in-flight request, same as the covered path above.
+        abortRef.current?.abort();
+        requestIdRef.current += 1;
+        fetchedBoundsRef.current = snapped;
+        applyData(cached);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
       const requestId = ++requestIdRef.current;
       setLoading(true);
       setError(null);
@@ -117,13 +135,14 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      fetchOverpassData(bounds, controller.signal)
+      fetchOverpassData(snapped, controller.signal)
         .then((response) => {
           if (requestIdRef.current !== requestId) return;
           const collection = overpassToGeoJSON(response.elements);
-          fetchedBoundsRef.current = bounds;
+          setCachedViewportData(snapped, collection);
+          fetchedBoundsRef.current = snapped;
           applyData(collection);
-          logFetchedCounts(bounds, response.elements.length, collection.features.length);
+          logFetchedCounts(snapped, response.elements.length, collection.features.length);
         })
         .catch((cause: unknown) => {
           if (requestIdRef.current !== requestId) return;
