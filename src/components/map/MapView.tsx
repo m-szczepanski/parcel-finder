@@ -3,14 +3,23 @@ import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
 import { booleanPointInPolygon, point } from '@turf/turf';
 import type { Map as LeafletMap } from 'leaflet';
 import { FreeLandLayer } from '@/components/map/FreeLandLayer';
-import { loadLastView, saveLastView } from '@/lib/mapState';
+import { BasemapToggle } from '@/components/map/BasemapToggle';
+import { loadBasemap, loadLastView, saveBasemap, saveLastView, type Basemap } from '@/lib/mapState';
 import { useSelectedFeature } from '@/hooks/useSelectedFeature';
 import type { CandidateSiteFeatureCollection, RawOsmFeature } from '@/types/geo';
 
-const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-
-const OSM_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const BASEMAPS: Record<Basemap, { url: string; attribution: string }> = {
+  osm: {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution:
+      'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+  },
+};
 
 const GEOLOCATION_TIMEOUT_MS = 5000;
 const GEOLOCATION_MAX_AGE_MS = 60_000;
@@ -31,10 +40,21 @@ export function MapView({
   takenFeatures = [],
 }: MapViewProps) {
   const [initialView] = useState(loadLastView);
+  const [basemap, setBasemap] = useState<Basemap>(loadBasemap);
+
+  function handleBasemapChange(next: Basemap) {
+    setBasemap(next);
+    saveBasemap(next);
+  }
 
   return (
     <MapContainer ref={ref} center={initialView.center} zoom={initialView.zoom} maxZoom={19}>
-      <TileLayer attribution={OSM_ATTRIBUTION} url={OSM_TILE_URL} />
+      {/* react-leaflet does not hot-swap tile URLs, so the layer remounts per basemap. */}
+      <TileLayer
+        key={basemap}
+        attribution={BASEMAPS[basemap].attribution}
+        url={BASEMAPS[basemap].url}
+      />
       {!belowMinZoom && freeLand && freeLand.features.length > 0 && (
         // react-leaflet's GeoJSON ignores data updates after creation, so the key
         // must change per fetch to force a fresh layer.
@@ -42,6 +62,7 @@ export function MapView({
       )}
       <TakenSiteCheck features={takenFeatures} />
       <ViewportController />
+      <BasemapToggle value={basemap} onChange={handleBasemapChange} />
     </MapContainer>
   );
 }
