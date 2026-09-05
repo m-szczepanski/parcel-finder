@@ -29,7 +29,7 @@ a "taken" notice in the same panel instead of any hover effect.
 | 03   | Free-land geometry     | done             |
 | 04   | Free-land layer        | done             |
 | 05   | Side panel (Sheet)     | done             |
-| 06   | Basemap toggle         | not started      |
+| 06   | Basemap toggle         | done             |
 | 07   | Viewport caching       | not started      |
 | 08   | States and feedback    | not started      |
 | 09   | Proxy: build or delete | pending decision |
