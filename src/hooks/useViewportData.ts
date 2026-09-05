@@ -78,6 +78,14 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
 
     let timer: ReturnType<typeof setTimeout> | undefined;
 
+    // Retire any superseded in-flight request: it can neither overwrite valid
+    // data nor surface its abort as an error, and Overpass allows only a couple
+    // of concurrent requests per client.
+    const retireInFlight = () => {
+      abortRef.current?.abort();
+      requestIdRef.current += 1;
+    };
+
     const applyData = (collection: RawOsmFeatureCollection) => {
       setData(collection);
       setVersion((current) => current + 1);
@@ -99,10 +107,7 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       // The viewport is still covered by the last successful fetch — keep the current
       // polygons on screen instead of waiting on another Overpass round-trip.
       if (isCoveredByFetch(fetchedBoundsRef.current, bounds)) {
-        // Retire any superseded in-flight request so it can neither overwrite the
-        // already-valid data nor surface its abort as an error.
-        abortRef.current?.abort();
-        requestIdRef.current += 1;
+        retireInFlight();
         setLoading(false);
         setError(null);
         return;
@@ -115,9 +120,7 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
 
       const cached = getCachedViewportData(snapped);
       if (cached) {
-        // Retire any superseded in-flight request, same as the covered path above.
-        abortRef.current?.abort();
-        requestIdRef.current += 1;
+        retireInFlight();
         fetchedBoundsRef.current = snapped;
         applyData(cached);
         setLoading(false);
@@ -167,8 +170,7 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       map.off('moveend', scheduleFetch);
       map.off('zoomend', scheduleFetch);
       clearTimeout(timer);
-      abortRef.current?.abort();
-      requestIdRef.current += 1;
+      retireInFlight();
     };
   }, [map]);
 
