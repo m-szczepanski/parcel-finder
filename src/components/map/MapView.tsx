@@ -43,6 +43,8 @@ export function MapView({
   const [basemap, setBasemap] = useState<Basemap>(loadBasemap);
 
   function handleBasemapChange(next: Basemap) {
+    if (next === basemap) return;
+
     setBasemap(next);
     saveBasemap(next);
   }

@@ -120,6 +120,10 @@ describe('MapView', () => {
       </SelectedFeatureProvider>,
     );
 
+    // Clicking the already-active toggle must not persist anything.
+    fireEvent.click(getByRole('button', { name: 'Map' }));
+    expect(window.localStorage.getItem('parcel-finder:basemap')).toBeNull();
+
     fireEvent.click(getByRole('button', { name: 'Satellite' }));
 
     const attribution = container.querySelector('.leaflet-control-attribution');
