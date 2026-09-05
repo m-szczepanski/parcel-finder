@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Map as LeafletMap } from 'leaflet';
 import { fetchOverpassData, overpassToGeoJSON } from '@/lib/overpass';
+import { getCachedViewportData, setCachedViewportData, snapBounds } from '@/lib/cache';
 import type { RawOsmFeatureCollection, ViewportBounds } from '@/types/geo';
 
 // Widened from the originally documented 15 so candidates show across a wider zoom
@@ -77,6 +78,14 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
 
     let timer: ReturnType<typeof setTimeout> | undefined;
 
+    // Retire any superseded in-flight request: it can neither overwrite valid
+    // data nor surface its abort as an error, and Overpass allows only a couple
+    // of concurrent requests per client.
+    const retireInFlight = () => {
+      abortRef.current?.abort();
+      requestIdRef.current += 1;
+    };
+
     const applyData = (collection: RawOsmFeatureCollection) => {
       setData(collection);
       setVersion((current) => current + 1);
@@ -98,10 +107,22 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       // The viewport is still covered by the last successful fetch — keep the current
       // polygons on screen instead of waiting on another Overpass round-trip.
       if (isCoveredByFetch(fetchedBoundsRef.current, bounds)) {
-        // Retire any superseded in-flight request so it can neither overwrite the
-        // already-valid data nor surface its abort as an error.
-        abortRef.current?.abort();
-        requestIdRef.current += 1;
+        retireInFlight();
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
+      // Fetch the grid-snapped bbox instead of the raw viewport: equal snapped
+      // bboxes share one cache entry, so returning to an area costs no network
+      // round-trip (docs section 3.4).
+      const snapped = snapBounds(bounds);
+
+      const cached = getCachedViewportData(snapped);
+      if (cached) {
+        retireInFlight();
+        fetchedBoundsRef.current = snapped;
+        applyData(cached);
         setLoading(false);
         setError(null);
         return;
@@ -117,13 +138,14 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      fetchOverpassData(bounds, controller.signal)
+      fetchOverpassData(snapped, controller.signal)
         .then((response) => {
           if (requestIdRef.current !== requestId) return;
           const collection = overpassToGeoJSON(response.elements);
-          fetchedBoundsRef.current = bounds;
+          setCachedViewportData(snapped, collection);
+          fetchedBoundsRef.current = snapped;
           applyData(collection);
-          logFetchedCounts(bounds, response.elements.length, collection.features.length);
+          logFetchedCounts(snapped, response.elements.length, collection.features.length);
         })
         .catch((cause: unknown) => {
           if (requestIdRef.current !== requestId) return;
@@ -148,8 +170,7 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       map.off('moveend', scheduleFetch);
       map.off('zoomend', scheduleFetch);
       clearTimeout(timer);
-      abortRef.current?.abort();
-      requestIdRef.current += 1;
+      retireInFlight();
     };
   }, [map]);
 

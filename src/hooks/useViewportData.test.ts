@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import type { Map as LeafletMap } from 'leaflet';
+import { clearViewportCache } from '@/lib/cache';
 import { useViewportData } from './useViewportData';
 import type { OverpassElement } from '@/types/overpass';
 
@@ -70,6 +71,7 @@ const closedWay: OverpassElement = {
 
 describe('useViewportData', () => {
   beforeEach(() => {
+    clearViewportCache();
     vi.useFakeTimers();
   });
 
@@ -140,6 +142,7 @@ describe('useViewportData', () => {
 
     act(() => {
       map.setZoom(13);
+      map.setBounds(52.1, 21.26, 52.2, 21.36);
       map.emit('zoomend');
     });
     act(() => {
@@ -201,6 +204,46 @@ describe('useViewportData', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.current.version).toBe(2);
+  });
+
+  it('serves a returning viewport from the cache without refetching', async () => {
+    const fetchMock = stubOverpassFetch({ elements: [closedWay] });
+    const map = createFakeMap(13);
+    const { result } = renderHook(() => useViewportData(map));
+
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      map.setBounds(52.1, 21.26, 52.2, 21.36);
+      map.emit('moveend');
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.current.version).toBe(2);
+
+    // Pan back to the first area — same grid cells, so the cache serves it.
+    act(() => {
+      map.setBounds(52.1, 21.05, 52.2, 21.15);
+      map.emit('moveend');
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.current.version).toBe(3);
+    expect(result.current.data.features).toHaveLength(1);
+    expect(result.current.data.features[0].id).toBe('way/1');
   });
 
   it('collapses rapid map moves into a single request per settled move', async () => {
