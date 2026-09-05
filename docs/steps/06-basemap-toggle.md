@@ -40,4 +40,4 @@ Milestone 5. Small, self-contained UI feature.
 ## Files touched
 
 `src/components/map/BasemapToggle.tsx` (new) + test, `src/components/map/MapView.tsx` + test,
-`src/lib/mapState.ts` + test.
+`src/lib/mapState.ts` + test, `src/test/memoryStorage.ts` (shared test helper).

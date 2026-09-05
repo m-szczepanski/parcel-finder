@@ -8,14 +8,10 @@ export type Basemap = 'osm' | 'satellite';
 const STORAGE_KEY = 'parcel-finder:last-view';
 const BASEMAP_STORAGE_KEY = 'parcel-finder:basemap';
 
-const BASEMAPS: readonly Basemap[] = ['osm', 'satellite'];
-
 export const DEFAULT_VIEW: MapViewState = {
   center: [52.23, 21.01],
   zoom: 15,
 };
-
-export const DEFAULT_BASEMAP: Basemap = 'osm';
 
 const MAX_OSM_ZOOM = 19;
 
@@ -47,9 +43,9 @@ export function loadBasemap(storage: StorageLike = window.localStorage): Basemap
   try {
     const raw = storage.getItem(BASEMAP_STORAGE_KEY);
 
-    return isBasemap(raw) ? raw : DEFAULT_BASEMAP;
+    return raw === 'osm' || raw === 'satellite' ? raw : 'osm';
   } catch {
-    return DEFAULT_BASEMAP;
+    return 'osm';
   }
 }
 
@@ -59,10 +55,6 @@ export function saveBasemap(basemap: Basemap, storage: StorageLike = window.loca
   } catch {
     // Persistence is best-effort; private mode / quota errors are not fatal.
   }
-}
-
-function isBasemap(value: unknown): value is Basemap {
-  return BASEMAPS.includes(value as Basemap);
 }
 
 function isMapViewState(value: unknown): value is MapViewState {

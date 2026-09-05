@@ -6,9 +6,9 @@ describe('BasemapToggle', () => {
     render(<BasemapToggle value="osm" onChange={() => undefined} />);
 
     expect(screen.getByRole('button', { name: 'Map' }).getAttribute('aria-pressed')).toBe('true');
-    expect(
-      screen.getByRole('button', { name: 'Satellite' }).getAttribute('aria-pressed'),
-    ).toBe('false');
+    expect(screen.getByRole('button', { name: 'Satellite' }).getAttribute('aria-pressed')).toBe(
+      'false',
+    );
   });
 
   it('reports the picked basemap', () => {

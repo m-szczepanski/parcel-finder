@@ -2,7 +2,8 @@ import { act, fireEvent, render } from '@testing-library/react';
 import { latLng } from 'leaflet';
 import type { Map as LeafletMap } from 'leaflet';
 import { SelectedFeatureProvider, useSelectedFeature } from '@/hooks/useSelectedFeature';
-import { DEFAULT_VIEW, saveBasemap, type StorageLike } from '@/lib/mapState';
+import { DEFAULT_VIEW, saveBasemap } from '@/lib/mapState';
+import { createMemoryStorage } from '@/test/memoryStorage';
 import type { RawOsmFeature } from '@/types/geo';
 import { MapView } from './MapView';
 
@@ -40,21 +41,14 @@ function SelectionProbe() {
 describe('MapView', () => {
   // The test environment has no localStorage; mapState reads/writes
   // window.localStorage by default, so a memory stand-in is installed here.
-  const store = new Map<string, string>();
-  const memoryStorage: StorageLike & Pick<Storage, 'clear'> = {
-    getItem: (key) => store.get(key) ?? null,
-    setItem: (key, value) => {
-      store.set(key, value);
-    },
-    clear: () => store.clear(),
-  };
+  const storage = createMemoryStorage();
 
   beforeAll(() => {
-    Object.defineProperty(window, 'localStorage', { value: memoryStorage });
+    Object.defineProperty(window, 'localStorage', { value: storage });
   });
 
   beforeEach(() => {
-    store.clear();
+    storage.clear();
   });
 
   it('exposes the Leaflet map instance via ref, centered on the default view', () => {
@@ -120,7 +114,6 @@ describe('MapView', () => {
   });
 
   it('switches to the satellite basemap from the toggle and persists the choice', () => {
-    window.localStorage.clear();
     const { getByRole, container } = render(
       <SelectedFeatureProvider>
         <MapView />
@@ -136,7 +129,6 @@ describe('MapView', () => {
   });
 
   it('restores a persisted satellite choice on reload', () => {
-    window.localStorage.clear();
     saveBasemap('satellite');
 
     const { container } = render(
