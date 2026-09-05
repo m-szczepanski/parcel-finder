@@ -28,7 +28,7 @@ a "taken" notice in the same panel instead of any hover effect.
 | 02   | Overpass data pipeline | done             |
 | 03   | Free-land geometry     | done             |
 | 04   | Free-land layer        | done             |
-| 05   | Side panel (Sheet)     | not started      |
+| 05   | Side panel (Sheet)     | done             |
 | 06   | Basemap toggle         | not started      |
 | 07   | Viewport caching       | not started      |
 | 08   | States and feedback    | not started      |

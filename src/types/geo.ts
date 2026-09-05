@@ -11,13 +11,11 @@ export type LandUseType =
   | 'park'
   | 'unknown';
 
-export type SiteStatus = 'empty' | 'taken';
-
 export type CandidateSiteProperties = {
   id: string;
   landuseType: LandUseType;
   area: number;
-  status: SiteStatus;
+  status: 'empty';
   centroid?: [number, number];
   address?: string;
   source?: 'overpass';
