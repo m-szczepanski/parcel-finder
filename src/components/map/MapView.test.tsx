@@ -1,8 +1,9 @@
-import { act, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import { latLng } from 'leaflet';
 import type { Map as LeafletMap } from 'leaflet';
 import { SelectedFeatureProvider, useSelectedFeature } from '@/hooks/useSelectedFeature';
-import { DEFAULT_VIEW } from '@/lib/mapState';
+import { DEFAULT_VIEW, saveBasemap } from '@/lib/mapState';
+import { createMemoryStorage } from '@/test/memoryStorage';
 import type { RawOsmFeature } from '@/types/geo';
 import { MapView } from './MapView';
 
@@ -38,6 +39,18 @@ function SelectionProbe() {
 }
 
 describe('MapView', () => {
+  // The test environment has no localStorage; mapState reads/writes
+  // window.localStorage by default, so a memory stand-in is installed here.
+  const storage = createMemoryStorage();
+
+  beforeAll(() => {
+    Object.defineProperty(window, 'localStorage', { value: storage });
+  });
+
+  beforeEach(() => {
+    storage.clear();
+  });
+
   it('exposes the Leaflet map instance via ref, centered on the default view', () => {
     const mapRef: { current: LeafletMap | null } = { current: null };
 
@@ -98,5 +111,38 @@ describe('MapView', () => {
     });
 
     expect(getByTestId('selection').textContent).toBe('none');
+  });
+
+  it('switches to the satellite basemap from the toggle and persists the choice', () => {
+    const { getByRole, container } = render(
+      <SelectedFeatureProvider>
+        <MapView />
+      </SelectedFeatureProvider>,
+    );
+
+    // Clicking the already-active toggle must not persist anything.
+    fireEvent.click(getByRole('button', { name: 'Map' }));
+    expect(window.localStorage.getItem('parcel-finder:basemap')).toBeNull();
+
+    fireEvent.click(getByRole('button', { name: 'Satellite' }));
+
+    const attribution = container.querySelector('.leaflet-control-attribution');
+
+    expect(attribution?.textContent).toContain('Esri');
+    expect(window.localStorage.getItem('parcel-finder:basemap')).toBe('satellite');
+  });
+
+  it('restores a persisted satellite choice on reload', () => {
+    saveBasemap('satellite');
+
+    const { container } = render(
+      <SelectedFeatureProvider>
+        <MapView />
+      </SelectedFeatureProvider>,
+    );
+
+    const attribution = container.querySelector('.leaflet-control-attribution');
+
+    expect(attribution?.textContent).toContain('Esri');
   });
 });

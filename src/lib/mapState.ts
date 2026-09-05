@@ -3,7 +3,10 @@ export type MapViewState = {
   zoom: number;
 };
 
+export type Basemap = 'osm' | 'satellite';
+
 const STORAGE_KEY = 'parcel-finder:last-view';
+const BASEMAP_STORAGE_KEY = 'parcel-finder:basemap';
 
 export const DEFAULT_VIEW: MapViewState = {
   center: [52.23, 21.01],
@@ -31,6 +34,24 @@ export function loadLastView(storage: StorageLike = window.localStorage): MapVie
 export function saveLastView(view: MapViewState, storage: StorageLike = window.localStorage): void {
   try {
     storage.setItem(STORAGE_KEY, JSON.stringify(view));
+  } catch {
+    // Persistence is best-effort; private mode / quota errors are not fatal.
+  }
+}
+
+export function loadBasemap(storage: StorageLike = window.localStorage): Basemap {
+  try {
+    const raw = storage.getItem(BASEMAP_STORAGE_KEY);
+
+    return raw === 'osm' || raw === 'satellite' ? raw : 'osm';
+  } catch {
+    return 'osm';
+  }
+}
+
+export function saveBasemap(basemap: Basemap, storage: StorageLike = window.localStorage): void {
+  try {
+    storage.setItem(BASEMAP_STORAGE_KEY, basemap);
   } catch {
     // Persistence is best-effort; private mode / quota errors are not fatal.
   }
