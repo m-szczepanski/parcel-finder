@@ -133,7 +133,7 @@ describe('computeFreeLand', () => {
     expect(result.features[0].id).toBe('way/land-1');
   });
 
-  it('never returns taken land use (forest, water, park) as candidates', () => {
+  it('never returns taken land use as candidates', () => {
     const wood = polygonFeature('way/wood', { natural: 'wood' }, ring(0, 0, 0.01, 0.01));
     const water = polygonFeature('way/water', { natural: 'water' }, ring(0, 0, 0.01, 0.01));
     const park = polygonFeature('way/park', { leisure: 'park' }, ring(0, 0, 0.01, 0.01));
