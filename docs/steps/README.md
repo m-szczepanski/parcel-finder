@@ -35,7 +35,7 @@ containing buildings will count as taken as a whole.
 | 06   | Basemap toggle         | done             |
 | 07   | Viewport caching       | done             |
 | 08   | States and feedback    | not started      |
-| 09   | Proxy: build or delete | pending decision |
+| 09   | Proxy: build or delete | done (deleted)  |
 | 10   | Heuristics tuning      | not started      |
 | 11   | Docs and repo hygiene  | not started      |
 | 12   | Taken sites on the map | not started      |
