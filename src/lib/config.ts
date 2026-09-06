@@ -25,22 +25,11 @@ export const QUERY_TAGS: readonly QueryTag[] = [
   { key: 'boundary', values: ['protected_area'] },
 ];
 
-// Maps OSM tag values to LandUseType; classifyLandUse checks tag keys in order
-// (landuse, natural, leisure, boundary) and falls back to 'unknown'.
+// Maps OSM tag values to LandUseType; classifyLandUse checks tag keys in the
+// order defined here and falls back to 'unknown'. Key order matters: physical
+// cover/amenity (natural, leisure, boundary) must beat zoning (landuse), so a
+// wood or park co-tagged with grass/farmland still classifies taken.
 export const LAND_USE_TAG_MAP: Record<string, Record<string, LandUseType>> = {
-  landuse: {
-    residential: 'residential',
-    commercial: 'commercial',
-    industrial: 'industrial',
-    farmland: 'farmland',
-    allotments: 'farmland',
-    orchard: 'farmland', // agricultural production, same class as farmland
-    grass: 'grass',
-    meadow: 'grass',
-    village_green: 'grass',
-    cemetery: 'cemetery', // maintained burial grounds — not developable
-    quarry: 'quarry', // active extraction site — not unused land
-  },
   natural: {
     wood: 'forest',
     water: 'water',
@@ -55,6 +44,31 @@ export const LAND_USE_TAG_MAP: Record<string, Record<string, LandUseType>> = {
   boundary: {
     protected_area: 'park',
   },
+  landuse: {
+    residential: 'residential',
+    commercial: 'commercial',
+    retail: 'commercial',
+    industrial: 'industrial',
+    farmland: 'farmland',
+    allotments: 'farmland',
+    orchard: 'farmland', // agricultural production, same class as farmland
+    plant_nursery: 'farmland',
+    grass: 'grass',
+    meadow: 'grass',
+    village_green: 'grass',
+    flowerbed: 'grass', // decorative planting; mostly drops out via MIN_AREA_M2
+    brownfield: 'brownfield', // policy-named empty: unused ground awaiting redevelopment
+    cemetery: 'cemetery', // maintained burial grounds — not developable
+    quarry: 'quarry', // active extraction site — not unused land
+    forest: 'forest', // same taken class as natural=wood
+    railway: 'railway', // transport corridor — in active use
+    construction: 'construction', // already being developed
+    education: 'education', // institutional grounds — in active use
+    religious: 'religious', // church grounds — in active use
+    garages: 'garages', // garage colonies — in active use
+    recreation_ground: 'recreation', // maintained amenity, park-like
+    military: 'military', // restricted — never a candidate
+  },
 };
 
 // Product decision (app doc section 8): forests, water, parks/protected areas,
@@ -65,4 +79,11 @@ export const TAKEN_LAND_USE_TYPES: ReadonlySet<LandUseType> = new Set([
   'park',
   'cemetery',
   'quarry',
+  'railway',
+  'construction',
+  'education',
+  'religious',
+  'garages',
+  'recreation',
+  'military',
 ]);

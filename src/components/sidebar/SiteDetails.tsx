@@ -30,6 +30,14 @@ const LAND_USE_LABELS: Record<LandUseType, string> = {
   park: 'Park',
   cemetery: 'Cemetery',
   quarry: 'Quarry',
+  brownfield: 'Brownfield',
+  railway: 'Railway',
+  construction: 'Under construction',
+  education: 'Education',
+  religious: 'Religious',
+  garages: 'Garages',
+  recreation: 'Recreation',
+  military: 'Military',
   unknown: 'Unknown',
 };
 

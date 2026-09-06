@@ -195,22 +195,37 @@ describe('classifyLandUse', () => {
     [{ leisure: 'park' }, 'park'],
     [{ boundary: 'protected_area' }, 'park'],
     [{ landuse: 'orchard' }, 'farmland'],
+    [{ landuse: 'plant_nursery' }, 'farmland'],
     [{ landuse: 'cemetery' }, 'cemetery'],
     [{ landuse: 'quarry' }, 'quarry'],
+    [{ landuse: 'brownfield' }, 'brownfield'],
+    [{ landuse: 'retail' }, 'commercial'],
+    [{ landuse: 'flowerbed' }, 'grass'],
+    [{ landuse: 'forest' }, 'forest'],
+    [{ landuse: 'railway' }, 'railway'],
+    [{ landuse: 'construction' }, 'construction'],
+    [{ landuse: 'education' }, 'education'],
+    [{ landuse: 'religious' }, 'religious'],
+    [{ landuse: 'garages' }, 'garages'],
+    [{ landuse: 'recreation_ground' }, 'recreation'],
+    [{ landuse: 'military' }, 'military'],
   ] as const)('maps %j to %s', (tags, expected) => {
     expect(classifyLandUse(tags)).toBe(expected);
   });
 
   it.each([
-    [{ landuse: 'brownfield' }, 'unknown'],
     [{ highway: 'residential' }, 'unknown'],
     [{}, 'unknown'],
   ] as const)('falls back to "unknown" for %j', (tags, expected) => {
     expect(classifyLandUse(tags)).toBe(expected);
   });
 
-  it('prefers the landuse tag over other tag keys', () => {
-    expect(classifyLandUse({ landuse: 'residential', natural: 'wood' })).toBe('residential');
+  // Physical cover/amenity must beat zoning: a wood or park co-tagged with
+  // grass/farmland landuse is still taken (measured: 11 such features in one
+  // Warsaw viewport).
+  it('prefers physical cover and amenity tags over landuse zoning', () => {
+    expect(classifyLandUse({ landuse: 'residential', natural: 'wood' })).toBe('forest');
+    expect(classifyLandUse({ landuse: 'grass', leisure: 'park' })).toBe('park');
   });
 });
 
