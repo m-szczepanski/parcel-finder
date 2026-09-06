@@ -4,6 +4,7 @@ import { booleanPointInPolygon, point } from '@turf/turf';
 import type { Map as LeafletMap } from 'leaflet';
 import { BasemapToggle } from '@/components/map/BasemapToggle';
 import { FreeLandLayer } from '@/components/map/FreeLandLayer';
+import { MapOverlay } from '@/components/map/MapOverlay';
 import { loadBasemap, loadLastView, saveBasemap, saveLastView, type Basemap } from '@/lib/mapState';
 import { useSelectedFeature } from '@/hooks/useSelectedFeature';
 import type { CandidateSiteFeatureCollection, RawOsmFeature } from '@/types/geo';
@@ -28,6 +29,7 @@ type MapViewProps = {
   ref?: Ref<LeafletMap>;
   freeLand?: CandidateSiteFeatureCollection;
   dataVersion?: number;
+  loading?: boolean;
   belowMinZoom?: boolean;
   takenFeatures?: RawOsmFeature[];
 };
@@ -36,6 +38,7 @@ export function MapView({
   ref,
   freeLand,
   dataVersion = 0,
+  loading = false,
   belowMinZoom = false,
   takenFeatures = [],
 }: MapViewProps) {
@@ -48,6 +51,9 @@ export function MapView({
     setBasemap(next);
     saveBasemap(next);
   }
+
+  const showNoResults =
+    !belowMinZoom && !loading && dataVersion > 0 && (freeLand?.features.length ?? 0) === 0;
 
   return (
     <MapContainer ref={ref} center={initialView.center} zoom={initialView.zoom} maxZoom={19}>
@@ -65,6 +71,7 @@ export function MapView({
       <TakenSiteCheck features={takenFeatures} />
       <ViewportController />
       <BasemapToggle value={basemap} onChange={handleBasemapChange} />
+      <MapOverlay loading={loading} belowMinZoom={belowMinZoom} showNoResults={showNoResults} />
     </MapContainer>
   );
 }
