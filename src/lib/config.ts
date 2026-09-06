@@ -1,8 +1,10 @@
 import type { LandUseType } from '@/types/geo';
 
 // Below this zoom the viewport bbox grows city-wide and Overpass responses get
-// too heavy/slow; 13 is the widest zoom that stayed responsive.
-export const MIN_ZOOM = 13;
+// too heavy/slow. Measured on a dense city viewport (Warsaw centre): zoom 13 =
+// 166 MiB / 150k elements / ~17 s, zoom 14 = 62 MiB / 53k / ~6 s, zoom 15 =
+// 25 MiB / 19k / ~3 s; zoom 16 was fast but hides too much for exploring.
+export const MIN_ZOOM = 15;
 
 // Landuse remainders smaller than this (m²) are slivers from imprecise OSM
 // tracing, not real plots — rendering them just adds noise.

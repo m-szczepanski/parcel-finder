@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import type { Map as LeafletMap } from 'leaflet';
+import { MIN_ZOOM } from '@/lib/config';
 import { clearViewportCache } from '@/lib/cache';
 import { useViewportData } from './useViewportData';
 import type { OverpassElement } from '@/types/overpass';
@@ -82,7 +83,7 @@ describe('useViewportData', () => {
 
   it('fetches once for the settled viewport above min zoom and exposes mapped data', async () => {
     const fetchMock = stubOverpassFetch({ elements: [closedWay] });
-    const map = createFakeMap(15);
+    const map = createFakeMap(MIN_ZOOM);
     const { result } = renderHook(() => useViewportData(map));
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -104,7 +105,7 @@ describe('useViewportData', () => {
 
   it('does not fetch below min zoom and flags belowMinZoom', () => {
     const fetchMock = stubOverpassFetch();
-    const map = createFakeMap(12);
+    const map = createFakeMap(MIN_ZOOM - 1);
     const { result } = renderHook(() => useViewportData(map));
 
     act(() => {
@@ -118,7 +119,7 @@ describe('useViewportData', () => {
 
   it('clears data and stops fetching once zoom drops below min zoom', async () => {
     const fetchMock = stubOverpassFetch();
-    const map = createFakeMap(15);
+    const map = createFakeMap(MIN_ZOOM);
     const { result } = renderHook(() => useViewportData(map));
 
     act(() => {
@@ -129,7 +130,7 @@ describe('useViewportData', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     act(() => {
-      map.setZoom(12);
+      map.setZoom(MIN_ZOOM - 1);
       map.emit('zoomend');
     });
     act(() => {
@@ -141,7 +142,7 @@ describe('useViewportData', () => {
     expect(result.current.data.features).toHaveLength(0);
 
     act(() => {
-      map.setZoom(13);
+      map.setZoom(MIN_ZOOM + 1);
       map.setBounds(52.1, 21.26, 52.2, 21.36);
       map.emit('zoomend');
     });
@@ -157,7 +158,7 @@ describe('useViewportData', () => {
 
   it('does not refetch while the viewport stays inside the fetched area', async () => {
     const fetchMock = stubOverpassFetch({ elements: [closedWay] });
-    const map = createFakeMap(13);
+    const map = createFakeMap(MIN_ZOOM);
     const { result } = renderHook(() => useViewportData(map));
 
     act(() => {
@@ -182,7 +183,7 @@ describe('useViewportData', () => {
 
   it('refetches once the viewport moves beyond the fetched area', async () => {
     const fetchMock = stubOverpassFetch({ elements: [closedWay] });
-    const map = createFakeMap(13);
+    const map = createFakeMap(MIN_ZOOM);
     const { result } = renderHook(() => useViewportData(map));
 
     act(() => {
@@ -208,7 +209,7 @@ describe('useViewportData', () => {
 
   it('serves a returning viewport from the cache without refetching', async () => {
     const fetchMock = stubOverpassFetch({ elements: [closedWay] });
-    const map = createFakeMap(13);
+    const map = createFakeMap(MIN_ZOOM);
     const { result } = renderHook(() => useViewportData(map));
 
     act(() => {
@@ -281,7 +282,7 @@ describe('useViewportData', () => {
         }),
     );
 
-    const map = createFakeMap(15);
+    const map = createFakeMap(MIN_ZOOM);
     const { result } = renderHook(() => useViewportData(map));
 
     act(() => {
@@ -321,7 +322,7 @@ describe('useViewportData', () => {
       }),
     );
 
-    const map = createFakeMap(13);
+    const map = createFakeMap(MIN_ZOOM);
     renderHook(() => useViewportData(map));
 
     act(() => {
@@ -355,7 +356,7 @@ describe('useViewportData', () => {
       );
     vi.stubGlobal('fetch', fetchMock);
 
-    const map = createFakeMap(13);
+    const map = createFakeMap(MIN_ZOOM);
     const { result } = renderHook(() => useViewportData(map));
 
     act(() => {
@@ -400,7 +401,7 @@ describe('useViewportData', () => {
       'fetch',
       vi.fn(async () => Promise.reject(new Error('overpass down'))),
     );
-    const map = createFakeMap(15);
+    const map = createFakeMap(MIN_ZOOM);
     const { result } = renderHook(() => useViewportData(map));
 
     act(() => {
@@ -415,7 +416,7 @@ describe('useViewportData', () => {
   it('skips automatic refetches during the backoff window after a failure', async () => {
     const fetchMock = vi.fn(async () => Promise.reject(new Error('overpass down')));
     vi.stubGlobal('fetch', fetchMock);
-    const map = createFakeMap(15);
+    const map = createFakeMap(MIN_ZOOM);
     const { result } = renderHook(() => useViewportData(map));
 
     act(() => {
@@ -446,7 +447,7 @@ describe('useViewportData', () => {
       .mockRejectedValueOnce(new Error('overpass down'))
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ elements: [closedWay] }) });
     vi.stubGlobal('fetch', fetchMock);
-    const map = createFakeMap(15);
+    const map = createFakeMap(MIN_ZOOM);
     const { result } = renderHook(() => useViewportData(map));
 
     act(() => {
