@@ -1,3 +1,5 @@
+import { QUERY_TAGS } from '@/lib/config';
+import type { QueryTag } from '@/lib/config';
 import type { RawOsmFeature, RawOsmFeatureCollection, ViewportBounds } from '@/types/geo';
 import type { OverpassElement, OverpassGeometryPoint, OverpassResponse } from '@/types/overpass';
 
@@ -9,22 +11,28 @@ const OVERPASS_TIMEOUT_MS = 25_000;
 const OVERPASS_RETRY_DELAY_MS = 2_000;
 const OVERPASS_RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
 
-const POLYGON_TAG_KEYS = ['building', 'landuse', 'natural', 'leisure', 'boundary'] as const;
+const POLYGON_TAG_KEYS = QUERY_TAGS.map((tag) => tag.key);
+
+function tagClause({ key, values }: QueryTag): string {
+  // Equality is the cheaper Overpass filter; regex only when several values
+  // share one key.
+  if (!values) {
+    return `way["${key}"]`;
+  }
+
+  return values.length === 1
+    ? `way["${key}"="${values[0]}"]`
+    : `way["${key}"~"^(${values.join('|')})$"]`;
+}
 
 export function buildOverpassQuery(bounds: ViewportBounds): string {
   const bbox = `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`;
+  const clauses = QUERY_TAGS.map((tag) => `${tagClause(tag)}(${bbox})`).join(';\n      ');
 
-  // Only policy-relevant tag values are fetched: the unfiltered way["natural"]/
-  // way["leisure"] queries ballooned the response and tripped Overpass rate limits.
-  // Tuned in step 10.
   return `
     [out:json][timeout:25];
     (
-      way["building"](${bbox});
-      way["landuse"](${bbox});
-      way["natural"~"^(wood|water|scrub|grass|meadow|heath)$"](${bbox});
-      way["leisure"="park"](${bbox});
-      way["boundary"="protected_area"](${bbox});
+      ${clauses};
     );
     out body geom;
   `.trim();

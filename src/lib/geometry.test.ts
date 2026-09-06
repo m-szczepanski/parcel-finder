@@ -1,9 +1,9 @@
 import type { Position } from 'geojson';
 import type { RawOsmFeature, RawOsmFeatureCollection } from '@/types/geo';
+import { MIN_AREA_M2 } from './config';
 import {
   computeFreeLand,
   computeViewportSites,
-  MIN_AREA_M2,
   classifyLandUse,
   normalizeViewportBounds,
 } from './geometry';
