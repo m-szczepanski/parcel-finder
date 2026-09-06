@@ -22,7 +22,7 @@ function App() {
     if (error) {
       const message =
         failures >= RATE_LIMIT_FAILURE_THRESHOLD
-          ? 'Overpass seems busy. Waiting a moment before retrying — pan the map to try earlier.'
+          ? 'Overpass seems busy. Waiting a moment before retrying — move the map to retry once the wait passes.'
           : 'Could not load map data. Move the map to retry.';
 
       // Stable id keeps repeated failures as one toast instead of a stack.
