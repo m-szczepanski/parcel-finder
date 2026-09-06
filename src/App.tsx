@@ -13,7 +13,7 @@ const MAP_DATA_ERROR_TOAST_ID = 'map-data-error';
 function App() {
   const [map, setMap] = useState<LeafletMap | null>(null);
 
-  const { data, error, belowMinZoom, version } = useViewportData(map);
+  const { data, error, loading, belowMinZoom, version } = useViewportData(map);
 
   useEffect(() => {
     if (error) {
@@ -33,6 +33,7 @@ function App() {
           ref={setMap}
           freeLand={freeLand}
           dataVersion={version}
+          loading={loading}
           belowMinZoom={belowMinZoom}
           takenFeatures={takenFeatures}
         />
