@@ -20,7 +20,7 @@ parcel-finder/
 │   │   │   └── EmptyState.tsx    # shown when nothing is selected
 │   │   └── ui/                   # shadcn/ui generated components (button, card, sheet, etc.)
 │   ├── lib/
-│   │   ├── config.ts              # tuning knobs: query tags, MIN_ZOOM, MIN_AREA_M2, classify/exclude tables
+│   │   ├── config.ts             # tuning knobs: query tags, MIN_ZOOM, MIN_AREA_M2, classify/exclude tables
 │   │   ├── overpass.ts           # Overpass API query builder + fetch
 │   │   ├── geometry.ts           # Turf-based computation (difference, area, etc.)
 │   │   ├── cache.ts              # bbox-keyed in-memory (or IndexedDB) cache

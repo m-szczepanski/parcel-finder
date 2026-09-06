@@ -1,15 +1,12 @@
 import type { LandUseType } from '@/types/geo';
 
-// Below this zoom the viewport bbox grows city-wide and Overpass responses get
-// too heavy/slow. Measured on a dense city viewport (Warsaw centre): zoom 13 =
-// 166 MiB / 150k elements / ~17 s, zoom 14 = 62 MiB / 53k / ~6 s, zoom 15 =
-// 25 MiB / 19k / ~3 s; zoom 16 was fast but hides too much for exploring.
+// Below this zoom Overpass responses get too heavy/slow for dense-city
+// viewports (measured: 62 MiB / ~6 s at 14 vs 25 MiB / ~3 s at 15); 16 hides
+// too much for exploring. Measured comparison: app doc section 8.
 export const MIN_ZOOM = 15;
 
-// Landuse remainders smaller than this (m²) are slivers from imprecise OSM
-// tracing/building subtraction, not real plots — at the MIN_ZOOM gate (~2.9 m/px
-// in Warsaw) 100 m² is already only ~3 px, anything smaller is unclickable dot
-// noise (1,400 such candidates measured per dense-city viewport).
+// Remainders below this (m²) are tracing/subtraction slivers, not plots: ~3 px
+// wide at the MIN_ZOOM gate, i.e. unclickable dot noise (measured; app doc 8).
 export const MIN_AREA_M2 = 100;
 
 // Which OSM tag values the Overpass query fetches. Restricted `values` keep the
@@ -71,8 +68,9 @@ export const LAND_USE_TAG_MAP: Record<string, Record<string, LandUseType>> = {
   },
 };
 
-// Product decision (app doc section 8): forests, water, parks/protected areas,
-// cemeteries and quarries are taken and never become free-land candidates.
+// Product decision (app doc section 8, edge categories tuned in step 10): these
+// land-use types are taken and never become free-land candidates; buildings are
+// subtracted instead.
 export const TAKEN_LAND_USE_TYPES: ReadonlySet<LandUseType> = new Set([
   'forest',
   'water',
