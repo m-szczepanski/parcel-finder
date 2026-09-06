@@ -30,9 +30,12 @@ export const LAND_USE_TAG_MAP: Record<string, Record<string, LandUseType>> = {
     industrial: 'industrial',
     farmland: 'farmland',
     allotments: 'farmland',
+    orchard: 'farmland', // agricultural production, same class as farmland
     grass: 'grass',
     meadow: 'grass',
     village_green: 'grass',
+    cemetery: 'cemetery', // maintained burial grounds — not developable
+    quarry: 'quarry', // active extraction site — not unused land
   },
   natural: {
     wood: 'forest',
@@ -50,6 +53,12 @@ export const LAND_USE_TAG_MAP: Record<string, Record<string, LandUseType>> = {
   },
 };
 
-// Product decision (app doc section 8): forests, water and parks/protected
-// areas are taken and never become free-land candidates.
-export const TAKEN_LAND_USE_TYPES: ReadonlySet<LandUseType> = new Set(['forest', 'water', 'park']);
+// Product decision (app doc section 8): forests, water, parks/protected areas,
+// cemeteries and quarries are taken and never become free-land candidates.
+export const TAKEN_LAND_USE_TYPES: ReadonlySet<LandUseType> = new Set([
+  'forest',
+  'water',
+  'park',
+  'cemetery',
+  'quarry',
+]);

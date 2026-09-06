@@ -28,6 +28,8 @@ const LAND_USE_LABELS: Record<LandUseType, string> = {
   forest: 'Forest',
   water: 'Water',
   park: 'Park',
+  cemetery: 'Cemetery',
+  quarry: 'Quarry',
   unknown: 'Unknown',
 };
 
@@ -38,7 +40,7 @@ function isTakenSite(feature: CandidateSiteFeature | TakenSiteFeature): feature 
 }
 
 // What occupies a taken site: buildings by tag, everything else via the shared
-// land-use classification (forest, water, park).
+// land-use classification (config TAKEN_LAND_USE_TYPES).
 function occupierLabel(tags: Record<string, string>): string {
   if ('building' in tags) {
     return 'Building';

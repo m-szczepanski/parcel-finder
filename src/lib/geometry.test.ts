@@ -143,6 +143,17 @@ describe('computeFreeLand', () => {
 
     expect(result.features.map((feature) => feature.properties.landuseType)).toEqual(['farmland']);
   });
+
+  it('treats edge categories per policy: orchard empty, cemetery/quarry taken', () => {
+    const orchard = polygonFeature('way/orchard', { landuse: 'orchard' }, ring(0, 0, 0.01, 0.01));
+    const cemetery = polygonFeature('way/cemetery', { landuse: 'cemetery' }, ring(2, 2, 2.01, 2.01));
+    const quarry = polygonFeature('way/quarry', { landuse: 'quarry' }, ring(4, 4, 4.01, 4.01));
+
+    const result = computeFreeLand(collection([orchard, cemetery, quarry]), collection([]));
+
+    expect(result.features.map((feature) => feature.properties.landuseType)).toEqual(['farmland']);
+  });
+
   it('skips an invalid polygon without breaking the batch', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     // Deliberately corrupted ring (non-numeric coordinate) that still has a valid
@@ -183,6 +194,9 @@ describe('classifyLandUse', () => {
     [{ natural: 'water' }, 'water'],
     [{ leisure: 'park' }, 'park'],
     [{ boundary: 'protected_area' }, 'park'],
+    [{ landuse: 'orchard' }, 'farmland'],
+    [{ landuse: 'cemetery' }, 'cemetery'],
+    [{ landuse: 'quarry' }, 'quarry'],
   ] as const)('maps %j to %s', (tags, expected) => {
     expect(classifyLandUse(tags)).toBe(expected);
   });
