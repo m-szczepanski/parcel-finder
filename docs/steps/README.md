@@ -36,7 +36,7 @@ containing buildings will count as taken as a whole.
 | 07   | Viewport caching       | done             |
 | 08   | States and feedback    | done             |
 | 09   | Proxy: build or delete | done             |
-| 10   | Heuristics tuning      | not started      |
+| 10   | Heuristics tuning      | done             |
 | 11   | Docs and repo hygiene  | not started      |
 | 12   | Taken sites on the map | not started      |
 
