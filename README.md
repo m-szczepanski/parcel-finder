@@ -21,7 +21,6 @@ All spatial data comes from OpenStreetMap (via the Overpass API) — no API keys
 - Leaflet + react-leaflet
 - Turf.js
 - Overpass API (OSM data) + optional Nominatim reverse-geocoding
-- Optional thin Express/serverless proxy for Overpass caching
 
 ## Getting started
 
@@ -39,14 +38,6 @@ npm run build
 npm run preview
 ```
 
-If using the optional backend proxy:
-
-```bash
-cd server
-npm install
-npm run dev
-```
-
 ## Initial project structure
 
 ```text
@@ -62,9 +53,6 @@ src/
 ├── App.tsx
 ├── main.tsx
 └── vite-env.d.ts
-server/
-├── index.ts
-└── package.json
 public/
 ├── favicon.svg
 └── robots.txt

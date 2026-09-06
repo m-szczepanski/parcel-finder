@@ -31,8 +31,6 @@ parcel-finder/
 │   │   └── geo.ts                # shared TS types (GeoJSON feature properties, etc.)
 │   └── styles/
 │       └── globals.css           # Tailwind base + shadcn theme tokens
-├── server/                       # optional thin proxy (only if needed)
-│   └── index.ts                  # Express route: /api/overpass?bbox=...
 ├── public/
 ├── index.html
 ├── tailwind.config.js
@@ -57,7 +55,7 @@ Rationale: `lib/` holds pure, testable functions with no React dependency (query
    - ways/relations tagged building=*
    - ways/relations tagged landuse=*, natural=*, leisure=*
         │
-5. fetch() → Overpass API (directly, or via /api/overpass proxy)
+5. fetch() → Overpass API (direct client-side call)
         │
 6. Response parsed → converted to GeoJSON (osmtogeojson or manual mapping)
         │
@@ -186,13 +184,18 @@ Key points:
 - `useViewportData` debounces `moveend` events (~500ms) to avoid firing a request on every intermediate pan frame.
 - A `MIN_ZOOM` constant (e.g. 15) prevents Overpass queries at city/country zoom levels, where bbox would be huge and the response enormous/slow. Below `MIN_ZOOM`, the layer is simply hidden and the map shows a subtle "zoom in to see candidate sites" hint.
 
-### 3.6 Optional backend proxy
+### 3.6 No backend proxy (decision)
 
-If direct client-side Overpass calls prove flaky (public instance rate limits, CORS), `server/index.ts` exposes a single route:
+Step 09 resolved the open question: no server-side proxy for v1. Direct client-side Overpass calls
+proved stable across steps 02-08 (no persistent rate limiting, CORS, or timeout issues), and the
+client-side protections already in place keep request volume low:
 
-`GET /api/overpass?bbox=<south,west,north,east>`
+- grid-snapped bbox cache (`lib/cache.ts`) avoids redundant fetches on small pans;
+- debounce + zoom gating (`useViewportData`) limits request frequency and scope;
+- two-endpoint failover with one retry on 429/5xx handles transient rate limits.
 
-which forwards the query server-side, applies basic response caching, and returns JSON to the client. This is intentionally minimal — no database, no auth, since it's a personal tool.
+Revisit if usage grows (e.g. multiple users or heavy daily use), at which point an in-memory cache
+behind a single Overpass forwarder is the smallest viable option.
 
 ### 3.7 Taken-site detection (click fallback)
 
@@ -241,18 +244,12 @@ If the app grows (saved sites, filters, settings persisted across sessions), a l
 
 ## 7. Environment & Config
 
-```text
-# .env (if backend proxy is used)
-OVERPASS_API_URL=https://overpass-api.de/api/interpreter
-PORT=3001
-```
-
-No secrets are required for v1 — every data source used is key-free.
+No environment variables are required — every data source used is key-free and the app runs as a
+static site with no backend.
 
 ## 8. Deployment
 
 - **Frontend:** static build (`vite build`) deployed to Vercel/Netlify/Cloudflare Pages.
-- **Backend proxy (if used):** deployed as a serverless function on the same platform (e.g. Vercel Functions) rather than a standalone server, to keep hosting free and maintenance minimal.
 
 ## 9. Implementation Order (mirrors milestones in the purpose doc, with technical detail)
 

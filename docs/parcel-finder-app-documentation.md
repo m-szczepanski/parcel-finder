@@ -16,7 +16,7 @@ The core interaction is exploratory, not query-based:
 5. Clicking a site opens a **side panel** sliding in from the right edge with calculated properties (land-use type, estimated area, and optionally a nearby address). For a **taken** site the panel clearly states that it is taken, alongside the available properties.
 6. Clicking the map background closes the panel.
 
-There is **no dependency on official cadastral registries**. All spatial data is sourced from OpenStreetMap, computed client-side (or via a thin caching proxy) using open geometry tooling. The identified "free sites" are therefore a **heuristic approximation**, not a legal/cadastral statement — this is explicitly a discovery/exploration tool, not a source of truth for property boundaries or ownership.
+There is **no dependency on official cadastral registries**. All spatial data is sourced from OpenStreetMap, computed client-side using open geometry tooling. The identified "free sites" are therefore a **heuristic approximation**, not a legal/cadastral statement — this is explicitly a discovery/exploration tool, not a source of truth for property boundaries or ownership.
 
 ### Goals
 
@@ -64,7 +64,6 @@ Open app → Map loads (geolocation if permitted → last known → default: War
 | Spatial data source      | Overpass API                                   | buildings (`building=*`) and landuse/landcover (`landuse=*`, `natural=*`) for current viewport |
 | Geometry engine          | Turf.js                                        | `difference`, `area`, `bbox`, optionally `booleanPointInPolygon`                               |
 | Geocoding (optional)     | Nominatim (OSM)                                | reverse-geocode a nearby address for the side panel                                            |
-| Backend (optional, thin) | Node.js + Express (or a serverless function)   | proxies/caches Overpass requests to avoid CORS and client-side rate-limit issues               |
 | State management         | React state / Context (or Zustand if it grows) | no need for Redux at this scale                                                                |
 | Package manager          | pnpm (or npm)                                  | personal preference, pnpm is fast and disk-efficient                                           |
 | Hosting                  | Vercel / Netlify / Cloudflare Pages            | free tier is sufficient for a personal project                                                 |
@@ -112,14 +111,6 @@ prettier
 tailwindcss (postcss + autoprefixer)
 ```
 
-### 4.4 Optional (backend proxy, if used)
-
-```text
-express
-node-fetch (or native fetch on modern Node)
-cors
-```
-
 ---
 
 ## 5. Data Sources
@@ -128,7 +119,7 @@ cors
 | -------------------------- | --------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------- |
 | OpenStreetMap tile servers | Base map tiles                                      | No            | Standard OSM tile usage policy applies (reasonable request volume)                             |
 | Esri World Imagery         | Satellite basemap toggle                            | No            | Free XYZ tile endpoint                                                                         |
-| Overpass API               | Building + landuse polygons for current viewport    | No            | Public instances are rate-limited; a self-hosted or cached proxy is recommended if usage grows |
+| Overpass API               | Building + landuse polygons for current viewport    | No            | Public instances are rate-limited; client-side caching keeps request volume low              |
 | Nominatim                  | Reverse geocoding for side panel address (optional) | No            | Usage policy limits request rate; cache results                                                |
 
 **No connection to official cadastral/geoportal services (e.g. GUGiK WMS/WFS) is used in this version.** This is a deliberate scope decision to keep the app data-source-simple and key-free; it can be revisited later if legally accurate parcel boundaries become a goal.
@@ -158,7 +149,7 @@ cors
 │  └───────────┬─────────────┘                    │
 └──────────────┼──────────────────────────────────┘
                ▼
-     (optional) caching proxy ──▶ Overpass API
+            Overpass API
 ```
 
 ## 7. Build Milestones
@@ -173,5 +164,5 @@ cors
 ## 8. Open Questions / Decisions To Revisit
 
 - **Resolved:** forests, water, and parks/protected areas count as **taken**, not empty — "empty" is limited to fields and unused ground (farmland, meadow, grass, scrub, brownfield, etc.). Buildings are taken by definition. Taken sites are not hover-highlighted, but clicking one still opens the panel with a taken notice. (Affects Overpass tags and classification; tuning of edge categories continues in step 10.)
+- **Resolved:** no backend proxy for v1 — direct client-side Overpass calls are sufficient. Over steps 02-08, calls remained stable (no persistent 429/504, CORS, or timeout issues) and client-side caching kept request volume low. Revisit if usage grows.
 - Minimum zoom level to trigger Overpass fetches — needs tuning against Overpass rate limits and UX responsiveness.
-- Whether a backend proxy is needed for v1, or whether direct client-side Overpass calls are sufficient for personal use.
