@@ -111,10 +111,6 @@ prettier
 tailwindcss (postcss + autoprefixer)
 ```
 
-### 4.4 Optional
-
-Nominatim reverse-geocoding (used only if the side panel address feature is enabled).
-
 ---
 
 ## 5. Data Sources
