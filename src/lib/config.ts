@@ -7,8 +7,10 @@ import type { LandUseType } from '@/types/geo';
 export const MIN_ZOOM = 15;
 
 // Landuse remainders smaller than this (m²) are slivers from imprecise OSM
-// tracing, not real plots — rendering them just adds noise.
-export const MIN_AREA_M2 = 50;
+// tracing/building subtraction, not real plots — at the MIN_ZOOM gate (~2.9 m/px
+// in Warsaw) 100 m² is already only ~3 px, anything smaller is unclickable dot
+// noise (1,400 such candidates measured per dense-city viewport).
+export const MIN_AREA_M2 = 100;
 
 // Which OSM tag values the Overpass query fetches. Restricted `values` keep the
 // response small: unfiltered natural/leisure queries ballooned it and tripped
