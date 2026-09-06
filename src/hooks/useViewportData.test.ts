@@ -411,4 +411,68 @@ describe('useViewportData', () => {
     expect(result.current.error).toBeInstanceOf(Error);
     expect(result.current.loading).toBe(false);
   });
+
+  it('skips automatic refetches during the backoff window after a failure', async () => {
+    const fetchMock = vi.fn(async () => Promise.reject(new Error('overpass down')));
+    vi.stubGlobal('fetch', fetchMock);
+    const map = createFakeMap(15);
+    const { result } = renderHook(() => useViewportData(map));
+
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.failures).toBe(1);
+    expect(result.current.error).toBeInstanceOf(Error);
+
+    // The automatic refetch during the backoff window is skipped.
+    act(() => {
+      map.setBounds(52.1, 21.36, 52.2, 21.46);
+      map.emit('moveend');
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries once the backoff window lapses and resets the failure count on success', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('overpass down'))
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ elements: [closedWay] }) });
+    vi.stubGlobal('fetch', fetchMock);
+    const map = createFakeMap(15);
+    const { result } = renderHook(() => useViewportData(map));
+
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.failures).toBe(1);
+
+    // Wait out the backoff window, then a pan retries.
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    act(() => {
+      map.setBounds(52.1, 21.36, 52.2, 21.46);
+      map.emit('moveend');
+    });
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS);
+    });
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.current.failures).toBe(0);
+    expect(result.current.error).toBeNull();
+    expect(result.current.data.features).toHaveLength(1);
+  });
 });

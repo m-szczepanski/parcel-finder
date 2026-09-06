@@ -34,7 +34,7 @@ containing buildings will count as taken as a whole.
 | 05   | Side panel (Sheet)     | done             |
 | 06   | Basemap toggle         | done             |
 | 07   | Viewport caching       | done             |
-| 08   | States and feedback    | not started      |
+| 08   | States and feedback    | done             |
 | 09   | Proxy: build or delete | pending decision |
 | 10   | Heuristics tuning      | not started      |
 | 11   | Docs and repo hygiene  | not started      |
