@@ -11,6 +11,10 @@ const DEBOUNCE_MS = 500;
 // Once an area is fetched, it keeps serving while the viewport stays within half a
 // viewport of the fetched bounds — panning around locally must feel instant.
 const REFETCH_MARGIN_RATIO = 0.5;
+// Rate-limit backoff (tech doc section 5): after a failure, automatic refetches are
+// skipped for an exponentially growing window so we stop hammering a busy Overpass.
+const BASE_BACKOFF_MS = 2000;
+const MAX_BACKOFF_MS = 30_000;
 
 function isCoveredByFetch(fetched: ViewportBounds | null, bounds: ViewportBounds): boolean {
   if (!fetched) {
@@ -38,8 +42,15 @@ type ViewportDataResult = {
   loading: boolean;
   error: Error | null;
   belowMinZoom: boolean;
+  // Consecutive failed fetches, reset on the first success — the App uses it to
+  // switch the toast to a calmer "waiting" message once Overpass looks rate-limited.
+  failures: number;
   version: number;
 };
+
+function backoffFor(consecutiveFailures: number): number {
+  return Math.min(BASE_BACKOFF_MS * 2 ** (consecutiveFailures - 1), MAX_BACKOFF_MS);
+}
 
 function readBounds(map: LeafletMap): ViewportBounds {
   const bounds = map.getBounds();
@@ -64,12 +75,15 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [belowMinZoom, setBelowMinZoom] = useState(true);
+  const [failures, setFailures] = useState(0);
   // Bumped on every data change — react-leaflet's GeoJSON ignores data prop
   // updates after creation, so consumers key the layer on this counter.
   const [version, setVersion] = useState(0);
   const requestIdRef = useRef(0);
   const fetchedBoundsRef = useRef<ViewportBounds | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const failureCountRef = useRef(0);
+  const backoffUntilRef = useRef(0);
 
   useEffect(() => {
     if (!map) {
@@ -89,6 +103,19 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
     const applyData = (collection: RawOsmFeatureCollection) => {
       setData(collection);
       setVersion((current) => current + 1);
+    };
+
+    const recordSuccess = () => {
+      failureCountRef.current = 0;
+      backoffUntilRef.current = 0;
+      setFailures(0);
+    };
+
+    const recordFailure = () => {
+      const nextFailures = failureCountRef.current + 1;
+      failureCountRef.current = nextFailures;
+      backoffUntilRef.current = Date.now() + backoffFor(nextFailures);
+      setFailures(nextFailures);
     };
 
     const fetchViewport = () => {
@@ -123,8 +150,16 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
         retireInFlight();
         fetchedBoundsRef.current = snapped;
         applyData(cached);
+        recordSuccess();
         setLoading(false);
         setError(null);
+        return;
+      }
+
+      // Rate-limit backoff: skip the automatic refetch while the window is active so
+      // a busy Overpass isn't pounded; the next user pan after it lapses retries
+      // naturally. The last successful layer stays visible meanwhile.
+      if (Date.now() < backoffUntilRef.current) {
         return;
       }
 
@@ -145,11 +180,13 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
           setCachedViewportData(snapped, collection);
           fetchedBoundsRef.current = snapped;
           applyData(collection);
+          recordSuccess();
           logFetchedCounts(snapped, response.elements.length, collection.features.length);
         })
         .catch((cause: unknown) => {
           if (requestIdRef.current !== requestId) return;
           setError(cause instanceof Error ? cause : new Error(String(cause)));
+          recordFailure();
         })
         .finally(() => {
           if (requestIdRef.current !== requestId) return;
@@ -174,5 +211,5 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
     };
   }, [map]);
 
-  return { data, loading, error, belowMinZoom, version };
+  return { data, loading, error, belowMinZoom, failures, version };
 }
