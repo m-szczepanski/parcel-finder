@@ -1,7 +1,7 @@
 # 09 — Proxy: build or delete
 
 **Depends on:** usage experience from 02-08
-**Status:** pending decision
+**Status:** done — proxy deleted
 
 ## Goal
 
@@ -19,31 +19,39 @@ Build the proxy if, during steps 02-08, any of these happen repeatedly:
 
 Delete/defer if direct calls feel stable across a few weeks of casual use.
 
+## Decision
+
+**Deleted.** During development across steps 02-08, direct client-side Overpass calls were
+stable: no persistent 429/504 rate limiting, no CORS issues, and no timeout flakiness during
+normal use. Request volume stays low thanks to grid-snapped bbox caching (step 07), zoom
+gating, and debouncing, with two-endpoint failover + one retry covering occasional transient
+rate limits. `server/` was only a never-run prototype (no `package.json`) with no caching, no
+bbox validation, and a query template that had drifted from the client's — building it out
+would have added complexity for no observed benefit. Revisit if usage grows (e.g. multiple
+users or heavy daily use), at which point an in-memory cache behind a single forwarder is the
+smallest viable option.
+
 ## If building
 
-- [ ] `server/package.json` (express, cors, tsx as dev runner) + README note — currently the
-      file cannot even run, and the README's `cd server && npm install && npm run dev` fails.
-- [ ] Validate `bbox` against `/^-?\d+(\.\d+)?(,-?\d+(\.\d+)?){3}$/` before interpolating
-      anything into the query (query-injection hygiene, flagged in review).
-- [ ] Reuse the same query template as the client (`buildOverpassQuery` exists in both places
-      today — either extract to a shared module or accept one duplicated constant and note it).
-- [ ] In-memory response cache keyed by grid-snapped bbox (mirror of step 07 logic).
-- [ ] Client switches endpoint via `VITE_OVERPASS_PROXY_URL` env (documented in
-      `.env.example`); direct URL remains the default so the app still works with no proxy.
-- [ ] try/catch around fetch/JSON (already done) + timeout on the outbound request.
+- [ ] ~~`server/package.json` (express, cors, tsx as dev runner) + README note~~ — n/a, deleted
+- [ ] ~~Validate `bbox` against `/^-?\d+(\.\d+)?(,-?\d+(\.\d+)?){3}$/`~~ — n/a, deleted
+- [ ] ~~Reuse the same query template as the client~~ — n/a, deleted
+- [ ] ~~In-memory response cache keyed by grid-snapped bbox~~ — n/a, deleted
+- [ ] ~~Client switches endpoint via `VITE_OVERPASS_PROXY_URL` env~~ — n/a, deleted
+- [ ] ~~try/catch around fetch/JSON + timeout on the outbound request~~ — n/a, deleted
 
 ## If deleting
 
-- [ ] Remove `server/`, update README (proxy section) and both docs (stack table row,
+- [x] Remove `server/`, update README (proxy section) and both docs (stack table row,
       section 3.6, deployment note).
-- [ ] Keep the decision recorded in the app doc's open-questions section (closed: direct).
+- [x] Keep the decision recorded in the app doc's open-questions section (closed: direct).
 
 ## Exit criteria
 
-- [ ] Decision recorded with 2-3 sentences of observed evidence in this file.
-- [ ] Either outcome leaves the repo consistent: no dead code, README matches reality.
-- [ ] lint / typecheck / test / build all green.
+- [x] Decision recorded with 2-3 sentences of observed evidence in this file.
+- [x] Either outcome leaves the repo consistent: no dead code, README matches reality.
+- [x] lint / typecheck / test / build all green.
 
 ## Files touched
 
-`server/*` (or its deletion), `README.md`, `.env.example`, docs.
+`server/*` (deleted), `README.md`, both `docs/` files.
