@@ -4,6 +4,7 @@ A personal web app for exploring a map and discovering likely unused/undeveloped
 
 > See [docs/parcel-finder-app-documentation.md](./docs/parcel-finder-app-documentation.md) for purpose, tech stack, and dependencies.
 > See [docs/parcel-finder-technical-implementation.md](./docs/parcel-finder-technical-implementation.md) for architecture and implementation details.
+> See [docs/steps/](./docs/steps/README.md) for the implementation roadmap and step status.
 
 ## What it does
 
