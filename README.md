@@ -38,29 +38,29 @@ npm run build
 npm run preview
 ```
 
-## Initial project structure
+## Project structure
 
 ```text
 src/
 ├── components/
 │   ├── map/
 │   ├── sidebar/
-│   └── ui/
+│   └── ui/            # shadcn/ui generated components
 ├── hooks/
 ├── lib/
 ├── styles/
+├── test/
 ├── types/
 ├── App.tsx
 ├── main.tsx
 └── vite-env.d.ts
-public/
-├── favicon.svg
-└── robots.txt
 index.html
 vite.config.ts
 postcss.config.js
 tsconfig.json
 ```
+
+Logic modules carry co-located `*.test.ts(x)` files (`npm run test`).
 
 See the technical implementation doc for the full breakdown.
 

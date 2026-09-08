@@ -14,30 +14,40 @@ parcel-finder/
 │   │   ├── map/
 │   │   │   ├── MapView.tsx       # Leaflet map wrapper (react-leaflet)
 │   │   │   ├── BasemapToggle.tsx # OSM / satellite switch
-│   │   │   └── FreeLandLayer.tsx # renders computed GeoJSON, hover styling + click selection
+│   │   │   ├── FreeLandLayer.tsx # renders computed GeoJSON, hover styling + click selection
+│   │   │   └── MapOverlay.tsx    # hint pills over the map (loading, zoom-in, no results)
 │   │   ├── sidebar/
 │   │   │   ├── SiteDetails.tsx   # shadcn Sheet (right side) with selected site data
 │   │   │   └── EmptyState.tsx    # shown when nothing is selected
-│   │   └── ui/                   # shadcn/ui generated components (button, card, sheet, etc.)
+│   │   └── ui/                   # shadcn/ui generated components (button, card, sheet, sonner, …)
 │   ├── lib/
 │   │   ├── config.ts             # tuning knobs: query tags, MIN_ZOOM, MIN_AREA_M2, classify/exclude tables
-│   │   ├── overpass.ts           # Overpass API query builder + fetch
+│   │   ├── overpass.ts           # Overpass API query builder + fetch + GeoJSON mapper
 │   │   ├── geometry.ts           # Turf-based computation (difference, area, etc.)
-│   │   ├── cache.ts              # bbox-keyed in-memory (or IndexedDB) cache
-│   │   └── geocode.ts            # optional Nominatim reverse-geocode helper
+│   │   ├── cache.ts              # bbox-keyed in-memory cache (LRU-capped)
+│   │   ├── format.ts             # display formatting helpers (area, …)
+│   │   ├── mapState.ts           # viewport/basemap persistence (localStorage)
+│   │   └── utils.ts              # cn() class-merge helper
 │   ├── hooks/
 │   │   ├── useViewportData.ts    # ties map moveend → debounced fetch → computed layer
-│   │   └── useSelectedFeature.ts # shared selection state; opens/closes the side panel
+│   │   └── useSelectedFeature.tsx # shared selection state; opens/closes the side panel
 │   ├── types/
-│   │   └── geo.ts                # shared TS types (GeoJSON feature properties, etc.)
+│   │   ├── geo.ts                # shared TS types (GeoJSON feature properties, etc.)
+│   │   └── overpass.ts           # Overpass response element types
+│   ├── test/
+│   │   └── memoryStorage.ts      # storage fake for tests
 │   └── styles/
-│       └── globals.css           # Tailwind base + shadcn theme tokens
-├── public/
+│       └── globals.css           # Tailwind v4 (CSS-first) + shadcn theme tokens — no tailwind.config.js
 ├── index.html
-├── tailwind.config.js
-├── vite.config.ts
+├── vite.config.ts                # also configures vitest (happy-dom, globals)
+├── postcss.config.js
+├── eslint.config.js
 └── tsconfig.json
 ```
+
+Modules with logic carry a co-located `*.test.ts(x)` file, run by `npm run test`. There is no
+`public/` folder and no server-side `geocode.ts` — Nominatim reverse-geocoding (optional in the
+product doc) is not implemented in v1.
 
 Rationale: `lib/` holds pure, testable functions with no React dependency (query building, geometry math, caching). `hooks/` wires that logic into React's lifecycle. `components/` stays presentational as much as possible.
 
