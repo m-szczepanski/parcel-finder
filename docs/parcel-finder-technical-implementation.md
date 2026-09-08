@@ -58,7 +58,7 @@ Rationale: `lib/` holds pure, testable functions with no React dependency (query
         │
 5. fetch() → Overpass API (direct client-side call)
         │
-6. Response parsed → converted to GeoJSON (osmtogeojson or manual mapping)
+6. Response parsed → converted to GeoJSON by the custom mapper in lib/overpass.ts
         │
 7. lib/geometry.ts:
    - group landuse polygons vs. building polygons
@@ -105,7 +105,11 @@ out skel qt;
 
 - Injecting the current bbox
 - Choosing which tags to query — the tag list (`QUERY_TAGS`) lives in `lib/config.ts`, so the "what counts as land" heuristic is a config change, not a code hunt
-- Converting the raw Overpass JSON response into GeoJSON (via `osmtogeojson` or a small custom mapper if the dependency feels heavier than needed)
+- Converting the raw Overpass JSON response into GeoJSON with the custom mapper
+  `overpassToGeoJSON` — `osmtogeojson` was evaluated and rejected (vulnerable transitive
+  dependencies, and its extra features are unused since the app queries with `[out:json]`). The
+  mapper keeps closed ways carrying polygon tags as simple Polygons and skips the rest; relations
+  are not resolved (documented v1 limitation).
 
 ### 3.2 "Free land" computation
 
