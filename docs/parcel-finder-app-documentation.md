@@ -78,23 +78,25 @@ react-dom
 react-leaflet
 leaflet
 @turf/turf
-tailwindcss
-class-variance-authority   # used internally by shadcn/ui components
+radix-ui                    # consolidated Radix primitives backing the shadcn/ui components
+class-variance-authority    # used internally by shadcn/ui components
 clsx
 tailwind-merge
 lucide-react
+sonner                      # toast notifications (shadcn/ui Sonner)
+next-themes                 # theme handling for the Sonner toaster
+tw-animate-css              # animation utilities (replaces tailwindcss-animate)
+shadcn                      # CLI that generates the ui components into src/components/ui/
 ```
 
 ### 4.2 shadcn/ui
 
-shadcn/ui is not installed as a single package — components are generated into the project source via its CLI, backed by Radix UI primitives. Relevant Radix packages get added automatically per component used, e.g.:
-
-```text
-@radix-ui/react-dialog
-@radix-ui/react-tooltip
-@radix-ui/react-toggle
-@radix-ui/react-slot
-```
+shadcn/ui is not installed as a component library — components are generated into the project
+source via its CLI (`shadcn` package), backed by the consolidated `radix-ui` package. That single
+dependency provides all needed primitives (dialog, tooltip, toggle, slot, …) instead of individual
+`@radix-ui/react-*` packages. Animations come from `tw-animate-css` (successor of
+`tailwindcss-animate`), and the UI uses the system font stack — no bundled webfont packages such
+as `@fontsource-variable/geist`.
 
 ### 4.3 Dev dependencies
 
@@ -105,10 +107,20 @@ vite
 @types/react
 @types/react-dom
 @types/leaflet
+@types/node
 eslint
+@eslint/js
+typescript-eslint
 eslint-plugin-react-hooks
+eslint-plugin-react-refresh
+eslint-config-prettier
+globals
 prettier
-tailwindcss (postcss + autoprefixer)
+tailwindcss                 # v4, CSS-first via @tailwindcss/postcss — no tailwind.config.js
+postcss
+vitest
+@testing-library/react
+happy-dom
 ```
 
 ---
