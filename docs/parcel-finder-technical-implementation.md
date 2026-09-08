@@ -249,8 +249,14 @@ If the app grows (saved sites, filters, settings persisted across sessions), a l
 
 ## 6. Testing Approach
 
-- **Unit tests** (Vitest) for `lib/geometry.ts` and `lib/overpass.ts` — these are pure functions and the highest-value place to test, since they contain the actual "business logic" of the app.
-- **Component tests** (React Testing Library) for `SiteDetails` and `FreeLandLayer`'s hover behavior, using mocked feature data.
+- **Setup:** Vitest 4 with the `happy-dom` environment (not jsdom) and globals enabled, configured
+  in `vite.config.ts`; React Testing Library for component tests. `@testing-library/jest-dom` was
+  dropped — plain assertions. Tests run with `npm run test`.
+- **Unit tests** for the pure `lib/` modules (`geometry.ts`, `overpass.ts`, `cache.ts`,
+  `format.ts`, `mapState.ts`) and the `useViewportData` hook — these contain the actual "business
+  logic" of the app.
+- **Component tests** for `App`, `MapView`, `FreeLandLayer`, `BasemapToggle` and `SiteDetails`,
+  using mocked feature data.
 - **Manual/exploratory testing** for the map interaction itself — end-to-end map testing has a poor effort/value ratio for a personal project.
 
 ## 7. Environment & Config
