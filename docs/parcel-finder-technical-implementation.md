@@ -20,6 +20,7 @@ parcel-finder/
 │   │   │   └── EmptyState.tsx    # shown when nothing is selected
 │   │   └── ui/                   # shadcn/ui generated components (button, card, sheet, etc.)
 │   ├── lib/
+│   │   ├── config.ts             # tuning knobs: query tags, MIN_ZOOM, MIN_AREA_M2, classify/exclude tables
 │   │   ├── overpass.ts           # Overpass API query builder + fetch
 │   │   ├── geometry.ts           # Turf-based computation (difference, area, etc.)
 │   │   ├── cache.ts              # bbox-keyed in-memory (or IndexedDB) cache
@@ -103,7 +104,7 @@ out skel qt;
 `lib/overpass.ts` is responsible for:
 
 - Injecting the current bbox
-- Choosing which tags to query (configurable, so the "what counts as land" heuristic can be tuned without touching fetch logic)
+- Choosing which tags to query — the tag list (`QUERY_TAGS`) lives in `lib/config.ts`, so the "what counts as land" heuristic is a config change, not a code hunt
 - Converting the raw Overpass JSON response into GeoJSON (via `osmtogeojson` or a small custom mapper if the dependency feels heavier than needed)
 
 ### 3.2 "Free land" computation
@@ -122,12 +123,18 @@ Approach:
 1. For each landuse polygon, find buildings whose bbox intersects it (cheap pre-filter before expensive geometry ops).
 2. Union the intersecting buildings (`turf.union`) if there's more than one.
 3. Subtract that union from the landuse polygon (`turf.difference`).
-4. Discard slivers below a minimum area threshold (avoids noisy, meaningless tiny fragments from imprecise OSM tracing).
+4. Discard slivers below a minimum area threshold (`MIN_AREA_M2`, 100 m² in `lib/config.ts` —
+   at the zoom-15 gate that is ~3 px; smaller fragments are imprecise-tracing noise, not plots).
 5. Attach `area`, `landuseType`, `status` (`empty`), and `id` to each result's `properties`.
 
-`classifyLandUse` enforces the empty/taken policy from the product doc: forests (`natural=wood`),
-water, parks/protected areas are **taken** and never become candidates here; farmland, meadow,
-grass, scrub, brownfield and similar are **empty**. Buildings are taken by definition.
+`classifyLandUse` enforces the empty/taken policy from the product doc; the classify table
+(`LAND_USE_TAG_MAP`) and the excluded types (`TAKEN_LAND_USE_TYPES`) live in `lib/config.ts`.
+Tag keys are checked in a fixed order — `natural`, `leisure`, `boundary` before `landuse` — so
+physical cover/amenity beats zoning: a wood or park co-tagged with grass is still taken.
+Forests (`natural=wood`), water, parks/protected areas and the tuned edge categories
+(cemetery, quarry, railway, construction, education, religious, garages, recreation ground,
+military) are **taken** and never become candidates; farmland, orchards, meadow, grass, scrub,
+brownfield and similar are **empty**. Buildings are taken by definition.
 
 Only **empty** candidates come out of `computeFreeLand`. The raw fetched features (buildings,
 forest/water/park polygons — everything classified **taken**) are kept from the step-02 fetch and
@@ -182,7 +189,7 @@ Key points:
 ### 3.5 Debounce & zoom gating
 
 - `useViewportData` debounces `moveend` events (~500ms) to avoid firing a request on every intermediate pan frame.
-- A `MIN_ZOOM` constant (e.g. 15) prevents Overpass queries at city/country zoom levels, where bbox would be huge and the response enormous/slow. Below `MIN_ZOOM`, the layer is simply hidden and the map shows a subtle "zoom in to see candidate sites" hint.
+- A `MIN_ZOOM` constant (15, in `lib/config.ts`) prevents Overpass queries at city/country zoom levels, where bbox would be huge and the response enormous/slow. Below `MIN_ZOOM`, the layer is simply hidden and the map shows a subtle "zoom in to see candidate sites" hint. The value was measured (step 10): on one dense-city viewport, zoom 14 already pulls ~62 MiB / 53k elements / ~6 s, while 15 needs ~25 MiB / 19k / ~3 s and 16 would hide too much for exploring.
 
 ### 3.6 No backend proxy (decision)
 
@@ -207,7 +214,7 @@ resolves it:
    `L.DomEvent.stopPropagation`, see 3.3).
 2. Build a point from the click lat/lng and run `turf.booleanPointInPolygon` against the cached
    raw viewport features — building polygons first, then taken landuse/natural polygons
-   (`natural=wood|water`, `leisure=park`, `boundary=protected_area`).
+   (everything in `TAKEN_LAND_USE_TYPES`, `lib/config.ts`).
 3. On a hit: select that raw feature with `status: 'taken'` — the Sheet opens showing the taken
    notice plus its properties (type from tags, `turf.area` for polygons).
 4. On a miss (no OSM polygon under the cursor): clear the selection and close the Sheet.

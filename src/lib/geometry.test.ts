@@ -1,9 +1,9 @@
 import type { Position } from 'geojson';
 import type { RawOsmFeature, RawOsmFeatureCollection } from '@/types/geo';
+import { MIN_AREA_M2 } from './config';
 import {
   computeFreeLand,
   computeViewportSites,
-  MIN_AREA_M2,
   classifyLandUse,
   normalizeViewportBounds,
 } from './geometry';
@@ -133,7 +133,7 @@ describe('computeFreeLand', () => {
     expect(result.features[0].id).toBe('way/land-1');
   });
 
-  it('never returns taken land use (forest, water, park) as candidates', () => {
+  it('never returns taken land use as candidates', () => {
     const wood = polygonFeature('way/wood', { natural: 'wood' }, ring(0, 0, 0.01, 0.01));
     const water = polygonFeature('way/water', { natural: 'water' }, ring(0, 0, 0.01, 0.01));
     const park = polygonFeature('way/park', { leisure: 'park' }, ring(0, 0, 0.01, 0.01));
@@ -143,6 +143,26 @@ describe('computeFreeLand', () => {
 
     expect(result.features.map((feature) => feature.properties.landuseType)).toEqual(['farmland']);
   });
+
+  it('treats edge categories per policy: orchard empty, cemetery/quarry taken', () => {
+    const orchard = polygonFeature('way/orchard', { landuse: 'orchard' }, ring(0, 0, 0.01, 0.01));
+    const cemetery = polygonFeature('way/cemetery', { landuse: 'cemetery' }, ring(2, 2, 2.01, 2.01));
+    const quarry = polygonFeature('way/quarry', { landuse: 'quarry' }, ring(4, 4, 4.01, 4.01));
+    // Co-tagged park: cover/amenity precedence must exclude it despite the grass zoning tag.
+    const coTaggedPark = polygonFeature(
+      'way/park-grass',
+      { landuse: 'grass', leisure: 'park' },
+      ring(6, 6, 6.01, 6.01),
+    );
+
+    const result = computeFreeLand(
+      collection([orchard, cemetery, quarry, coTaggedPark]),
+      collection([]),
+    );
+
+    expect(result.features.map((feature) => feature.properties.landuseType)).toEqual(['farmland']);
+  });
+
   it('skips an invalid polygon without breaking the batch', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     // Deliberately corrupted ring (non-numeric coordinate) that still has a valid
@@ -183,20 +203,38 @@ describe('classifyLandUse', () => {
     [{ natural: 'water' }, 'water'],
     [{ leisure: 'park' }, 'park'],
     [{ boundary: 'protected_area' }, 'park'],
+    [{ landuse: 'orchard' }, 'farmland'],
+    [{ landuse: 'plant_nursery' }, 'farmland'],
+    [{ landuse: 'cemetery' }, 'cemetery'],
+    [{ landuse: 'quarry' }, 'quarry'],
+    [{ landuse: 'brownfield' }, 'brownfield'],
+    [{ landuse: 'retail' }, 'commercial'],
+    [{ landuse: 'flowerbed' }, 'grass'],
+    [{ landuse: 'forest' }, 'forest'],
+    [{ landuse: 'railway' }, 'railway'],
+    [{ landuse: 'construction' }, 'construction'],
+    [{ landuse: 'education' }, 'education'],
+    [{ landuse: 'religious' }, 'religious'],
+    [{ landuse: 'garages' }, 'garages'],
+    [{ landuse: 'recreation_ground' }, 'recreation'],
+    [{ landuse: 'military' }, 'military'],
   ] as const)('maps %j to %s', (tags, expected) => {
     expect(classifyLandUse(tags)).toBe(expected);
   });
 
   it.each([
-    [{ landuse: 'brownfield' }, 'unknown'],
     [{ highway: 'residential' }, 'unknown'],
     [{}, 'unknown'],
   ] as const)('falls back to "unknown" for %j', (tags, expected) => {
     expect(classifyLandUse(tags)).toBe(expected);
   });
 
-  it('prefers the landuse tag over other tag keys', () => {
-    expect(classifyLandUse({ landuse: 'residential', natural: 'wood' })).toBe('residential');
+  // Physical cover/amenity must beat zoning: a wood or park co-tagged with
+  // grass/farmland landuse is still taken (measured: 11 such features in one
+  // Warsaw viewport).
+  it('prefers physical cover and amenity tags over landuse zoning', () => {
+    expect(classifyLandUse({ landuse: 'residential', natural: 'wood' })).toBe('forest');
+    expect(classifyLandUse({ landuse: 'grass', leisure: 'park' })).toBe('park');
   });
 });
 

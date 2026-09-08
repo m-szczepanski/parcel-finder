@@ -1,5 +1,6 @@
 import { area as turfArea, bbox, centroid, difference, union } from '@turf/turf';
 import type { BBox, Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson';
+import { LAND_USE_TAG_MAP, MIN_AREA_M2, TAKEN_LAND_USE_TYPES } from '@/lib/config';
 import type {
   CandidateSiteFeature,
   CandidateSiteFeatureCollection,
@@ -7,39 +8,6 @@ import type {
   RawOsmFeature,
   RawOsmFeatureCollection,
 } from '@/types/geo';
-
-// Slivers below this area (m²) are discarded; tuned in step 10.
-export const MIN_AREA_M2 = 50;
-
-// Maps OSM tags to LandUseType. First matching tag key wins (landuse, then natural,
-// leisure, boundary). Anything unmapped falls back to 'unknown'. The exclude/include
-// policy is tuned in step 10 — keep this table small.
-const LAND_USE_TAG_MAP: Record<string, Record<string, LandUseType>> = {
-  landuse: {
-    residential: 'residential',
-    commercial: 'commercial',
-    industrial: 'industrial',
-    farmland: 'farmland',
-    allotments: 'farmland',
-    grass: 'grass',
-    meadow: 'grass',
-    village_green: 'grass',
-  },
-  natural: {
-    wood: 'forest',
-    water: 'water',
-    grass: 'grass',
-    meadow: 'grass',
-    scrub: 'grass',
-    heath: 'grass',
-  },
-  leisure: {
-    park: 'park',
-  },
-  boundary: {
-    protected_area: 'park',
-  },
-};
 
 export function classifyLandUse(tags: Record<string, string>): LandUseType {
   for (const [tagKey, valueMap] of Object.entries(LAND_USE_TAG_MAP)) {
@@ -52,10 +20,6 @@ export function classifyLandUse(tags: Record<string, string>): LandUseType {
 
   return 'unknown';
 }
-
-// Product decision (app doc section 8): forests, water and parks/protected areas are
-// taken and never become free-land candidates. Buildings are subtracted instead.
-const TAKEN_LAND_USE_TYPES: ReadonlySet<LandUseType> = new Set(['forest', 'water', 'park']);
 
 type PolygonFeature = Feature<Polygon | MultiPolygon>;
 type IndexedBuilding = { feature: RawOsmFeature; box: BBox };

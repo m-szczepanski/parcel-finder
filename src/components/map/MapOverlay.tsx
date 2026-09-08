@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { LoaderCircle } from 'lucide-react';
 
 type MapOverlayProps = {
@@ -6,32 +7,40 @@ type MapOverlayProps = {
   showNoResults: boolean;
 };
 
-function CenteredHint({ message }: { message: string }) {
+function HintPill({ children }: { children: ReactNode }) {
+  return (
+    <span className="flex items-center gap-2 rounded-md bg-background/90 px-3 py-1.5 text-sm text-muted-foreground shadow-sm">
+      {children}
+    </span>
+  );
+}
+
+function CenteredHint({ children }: { children: ReactNode }) {
   return (
     <div className="pointer-events-none absolute inset-0 z-[1000] flex items-center justify-center">
-      <span className="rounded-md bg-background/90 px-3 py-1.5 text-sm text-muted-foreground shadow-sm">
-        {message}
-      </span>
+      <HintPill>{children}</HintPill>
     </div>
   );
 }
 
 export function MapOverlay({ loading, belowMinZoom, showNoResults }: MapOverlayProps) {
   if (belowMinZoom) {
-    return <CenteredHint message="Zoom in to see candidate sites" />;
+    return <CenteredHint>Zoom in to see candidate sites</CenteredHint>;
   }
 
   if (loading) {
     return (
-      <div className="pointer-events-none absolute top-2 left-2 z-[1000] flex items-center gap-2 rounded-md border bg-background px-2.5 py-1.5 text-sm text-muted-foreground shadow-sm">
-        <LoaderCircle className="size-4 animate-spin" aria-hidden />
-        Loading
+      <div className="pointer-events-none absolute top-2 left-1/2 z-[1000] -translate-x-1/2">
+        <HintPill>
+          <LoaderCircle className="size-4 animate-spin" aria-hidden />
+          Loading
+        </HintPill>
       </div>
     );
   }
 
   if (showNoResults) {
-    return <CenteredHint message="Nothing found in this area" />;
+    return <CenteredHint>Nothing found in this area</CenteredHint>;
   }
 
   return null;

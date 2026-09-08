@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Map as LeafletMap } from 'leaflet';
+import { MIN_ZOOM } from '@/lib/config';
 import { fetchOverpassData, overpassToGeoJSON } from '@/lib/overpass';
 import { getCachedViewportData, setCachedViewportData, snapBounds } from '@/lib/cache';
 import type { RawOsmFeatureCollection, ViewportBounds } from '@/types/geo';
 
-// Widened from the originally documented 15 so candidates show across a wider zoom
-// range; below 13 city-wide bboxes get too heavy for Overpass. Tuned in step 10.
-const MIN_ZOOM = 13;
 const DEBOUNCE_MS = 500;
 // Once an area is fetched, it keeps serving while the viewport stays within half a
 // viewport of the fetched bounds — panning around locally must feel instant.

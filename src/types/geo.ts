@@ -9,6 +9,16 @@ export type LandUseType =
   | 'forest'
   | 'water'
   | 'park'
+  | 'cemetery'
+  | 'quarry'
+  | 'brownfield'
+  | 'railway'
+  | 'construction'
+  | 'education'
+  | 'religious'
+  | 'garages'
+  | 'recreation'
+  | 'military'
   | 'unknown';
 
 export type CandidateSiteProperties = {
