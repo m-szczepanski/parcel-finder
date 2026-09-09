@@ -4,7 +4,7 @@ import type { Map as LeafletMap } from 'leaflet';
 import { SelectedFeatureProvider, useSelectedFeature } from '@/hooks/useSelectedFeature';
 import { DEFAULT_VIEW, saveBasemap } from '@/lib/mapState';
 import { createMemoryStorage } from '@/test/memoryStorage';
-import type { RawOsmFeature } from '@/types/geo';
+import type { CandidateSiteFeatureCollection, RawOsmFeature } from '@/types/geo';
 import { MapView } from './MapView';
 
 // Covers [52.1, 21.0] .. [52.2, 21.1]
@@ -37,6 +37,29 @@ function SelectionProbe() {
     </span>
   );
 }
+
+const FREE_LAND: CandidateSiteFeatureCollection = {
+  type: 'FeatureCollection',
+  features: [
+    {
+      type: 'Feature',
+      id: 'way/grass-1',
+      properties: { id: 'way/grass-1', landuseType: 'grass', area: 1_000_000, status: 'empty' },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [22.0, 53.0],
+            [22.1, 53.0],
+            [22.1, 53.1],
+            [22.0, 53.1],
+            [22.0, 53.0],
+          ],
+        ],
+      },
+    },
+  ],
+};
 
 describe('MapView', () => {
   // The test environment has no localStorage; mapState reads/writes
@@ -82,6 +105,22 @@ describe('MapView', () => {
     const attribution = container.querySelector('.leaflet-control-attribution');
 
     expect(attribution?.textContent).toContain('OpenStreetMap');
+  });
+
+  it('renders taken features as red paths below the free-land layer', () => {
+    const { container } = render(
+      <SelectedFeatureProvider>
+        <MapView freeLand={FREE_LAND} takenFeatures={[TAKEN_BUILDING]} />
+      </SelectedFeatureProvider>,
+    );
+
+    // Both layers share one SVG renderer, so DOM order is stacking order:
+    // taken first (below), free-land second (on top).
+    const paths = container.querySelectorAll('path.leaflet-interactive');
+
+    expect(paths).toHaveLength(2);
+    expect(paths[0].getAttribute('stroke')).toBe('#dc2626');
+    expect(paths[1].getAttribute('stroke')).toBe('#059669');
   });
 
   it('selects a taken site on a bare-map click inside it and clears on a miss', () => {

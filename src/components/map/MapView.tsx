@@ -5,6 +5,7 @@ import type { Map as LeafletMap } from 'leaflet';
 import { BasemapToggle } from '@/components/map/BasemapToggle';
 import { FreeLandLayer } from '@/components/map/FreeLandLayer';
 import { MapOverlay } from '@/components/map/MapOverlay';
+import { TakenSiteLayer } from '@/components/map/TakenSiteLayer';
 import { loadBasemap, loadLastView, saveBasemap, saveLastView, type Basemap } from '@/lib/mapState';
 import { useSelectedFeature } from '@/hooks/useSelectedFeature';
 import type { CandidateSiteFeatureCollection, RawOsmFeature } from '@/types/geo';
@@ -63,6 +64,11 @@ export function MapView({
         attribution={BASEMAPS[basemap].attribution}
         url={BASEMAPS[basemap].url}
       />
+      {/* The taken layer sits below the free-land layer so green candidates
+          stay on top where polygons are adjacent. */}
+      {!belowMinZoom && takenFeatures.length > 0 && (
+        <TakenSiteLayer key={dataVersion} features={takenFeatures} />
+      )}
       {!belowMinZoom && freeLand && freeLand.features.length > 0 && (
         // react-leaflet's GeoJSON ignores data updates after creation, so the key
         // must change per fetch to force a fresh layer.
