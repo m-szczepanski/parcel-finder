@@ -1,10 +1,11 @@
 import { act, fireEvent, render } from '@testing-library/react';
 import { latLng } from 'leaflet';
 import type { Map as LeafletMap } from 'leaflet';
-import { SelectedFeatureProvider, useSelectedFeature } from '@/hooks/useSelectedFeature';
+import { SelectedFeatureProvider } from '@/hooks/useSelectedFeature';
 import { DEFAULT_VIEW, saveBasemap } from '@/lib/mapState';
-import { createMemoryStorage } from '@/test/memoryStorage';
 import { geoJsonPaths } from '@/test/leafletLayers';
+import { createMemoryStorage } from '@/test/memoryStorage';
+import { SelectionProbe } from '@/test/selectionProbe';
 import type { CandidateSiteFeatureCollection, RawOsmFeature } from '@/types/geo';
 import { MapView } from './MapView';
 
@@ -26,18 +27,6 @@ const TAKEN_BUILDING: RawOsmFeature = {
     ],
   },
 };
-
-function SelectionProbe() {
-  const { selectedFeature } = useSelectedFeature();
-
-  return (
-    <span data-testid="selection">
-      {selectedFeature
-        ? `${selectedFeature.properties.id}:${selectedFeature.properties.status}`
-        : 'none'}
-    </span>
-  );
-}
 
 const FREE_LAND: CandidateSiteFeatureCollection = {
   type: 'FeatureCollection',
@@ -122,6 +111,47 @@ describe('MapView', () => {
     expect(paths).toHaveLength(2);
     expect(paths[0].getAttribute('stroke')).toBe('#dc2626');
     expect(paths[1].getAttribute('stroke')).toBe('#059669');
+  });
+
+  // A real bubbling DOM click goes through Leaflet's own propagation: the layer
+  // must consume it (stopPropagation) so the map-level deselect never fires —
+  // otherwise the panel would open and instantly close in the browser.
+  it('keeps the selection when a real DOM click lands on a taken path', () => {
+    const { container, getByTestId } = render(
+      <SelectedFeatureProvider>
+        <MapView takenFeatures={[TAKEN_BUILDING]} />
+        <SelectionProbe />
+      </SelectedFeatureProvider>,
+    );
+
+    const path = container.querySelector('path.leaflet-interactive');
+
+    expect(path).toBeTruthy();
+
+    act(() => {
+      path!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    expect(getByTestId('selection').textContent).toBe('way/b-1:taken');
+  });
+
+  it('keeps the selection when a real DOM click lands on a free-land path', () => {
+    const { container, getByTestId } = render(
+      <SelectedFeatureProvider>
+        <MapView freeLand={FREE_LAND} />
+        <SelectionProbe />
+      </SelectedFeatureProvider>,
+    );
+
+    const path = container.querySelector('path.leaflet-interactive');
+
+    expect(path).toBeTruthy();
+
+    act(() => {
+      path!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    expect(getByTestId('selection').textContent).toBe('way/grass-1:empty');
   });
 
   it('selects a taken site from the red layer and clears on a bare-map click', () => {

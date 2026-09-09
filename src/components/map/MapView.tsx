@@ -64,13 +64,13 @@ export function MapView({
         url={BASEMAPS[basemap].url}
       />
       {/* The taken layer sits below the free-land layer so green candidates
-          stay on top where polygons are adjacent. */}
+          stay on top where polygons are adjacent. Both GeoJSON layers remount
+          per fetch: react-leaflet's GeoJSON ignores data updates after
+          creation, so the key must change to force a fresh layer. */}
       {!belowMinZoom && takenFeatures.length > 0 && (
         <TakenSiteLayer key={dataVersion} features={takenFeatures} />
       )}
       {!belowMinZoom && freeLand && freeLand.features.length > 0 && (
-        // react-leaflet's GeoJSON ignores data updates after creation, so the key
-        // must change per fetch to force a fresh layer.
         <FreeLandLayer key={dataVersion} data={freeLand} />
       )}
       <DeselectOnMapClick />

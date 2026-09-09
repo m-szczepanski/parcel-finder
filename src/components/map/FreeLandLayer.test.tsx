@@ -1,8 +1,5 @@
-import { act, fireEvent, render } from '@testing-library/react';
-import type { Map as LeafletMap } from 'leaflet';
-import { MapContainer } from 'react-leaflet';
-import { SelectedFeatureProvider, useSelectedFeature } from '@/hooks/useSelectedFeature';
-import { geoJsonPaths } from '@/test/leafletLayers';
+import { act, fireEvent } from '@testing-library/react';
+import { geoJsonPaths, renderOnMap } from '@/test/leafletLayers';
 import type { CandidateSiteFeatureCollection } from '@/types/geo';
 import { FreeLandLayer } from './FreeLandLayer';
 
@@ -46,38 +43,8 @@ const COLLECTION: CandidateSiteFeatureCollection = {
   ],
 };
 
-function SelectionProbe() {
-  const { selectedFeature, clearSelection } = useSelectedFeature();
-
-  return (
-    <div>
-      <span data-testid="selection">{selectedFeature?.properties.id ?? 'none'}</span>
-      <button type="button" onClick={clearSelection}>
-        clear
-      </button>
-    </div>
-  );
-}
-
 function renderLayer() {
-  const mapRef: { current: LeafletMap | null } = { current: null };
-
-  const view = render(
-    <SelectedFeatureProvider>
-      <MapContainer
-        ref={(map) => {
-          mapRef.current = map ?? null;
-        }}
-        center={[52.15, 21.05]}
-        zoom={15}
-      >
-        <FreeLandLayer data={COLLECTION} />
-      </MapContainer>
-      <SelectionProbe />
-    </SelectedFeatureProvider>,
-  );
-
-  return { mapRef, view };
+  return renderOnMap(<FreeLandLayer data={COLLECTION} />);
 }
 
 describe('FreeLandLayer', () => {
@@ -120,7 +87,7 @@ describe('FreeLandLayer', () => {
       path.fire('click');
     });
 
-    expect(view.getByTestId('selection').textContent).toBe('way/1');
+    expect(view.getByTestId('selection').textContent).toBe('way/1:empty');
     expect(path.options.fillColor).toBe('#9ca3af');
 
     // The selected polygon must not revert on mouseout.
@@ -140,7 +107,7 @@ describe('FreeLandLayer', () => {
       second.fire('click');
     });
 
-    expect(view.getByTestId('selection').textContent).toBe('way/2');
+    expect(view.getByTestId('selection').textContent).toBe('way/2:empty');
     expect(first.options.fillColor).toBe('#10b981');
     expect(second.options.fillColor).toBe('#9ca3af');
   });

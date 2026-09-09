@@ -1,4 +1,4 @@
-import { DomEvent, type Path, type PathOptions } from 'leaflet';
+import { DomEvent, type PathOptions } from 'leaflet';
 import type { FeatureCollection } from 'geojson';
 import { GeoJSON } from 'react-leaflet';
 import { useSelectedFeature } from '@/hooks/useSelectedFeature';
@@ -30,7 +30,7 @@ export function TakenSiteLayer({ features }: TakenSiteLayerProps) {
 
         // Product decision: taken sites get no hover effect — the red fill is
         // the cue, and clicking opens the panel with the taken notice.
-        (layer as Path).on({
+        layer.on({
           click: (event) => {
             // Keep the click from reaching the map-level deselect handler.
             DomEvent.stopPropagation(event);

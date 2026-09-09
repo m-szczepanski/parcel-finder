@@ -1,7 +1,7 @@
 import type { Position } from 'geojson';
 import type { RawOsmFeature, RawOsmFeatureCollection } from '@/types/geo';
 import {
-  computeFreeLand,
+  computeSites,
   computeViewportSites,
   classifyLandUse,
   normalizeViewportBounds,
@@ -17,7 +17,11 @@ function ring(west: number, south: number, east: number, north: number): Positio
   ];
 }
 
-function polygonFeature(id: string, tags: Record<string, string>, outline: Position[]): RawOsmFeature {
+function polygonFeature(
+  id: string,
+  tags: Record<string, string>,
+  outline: Position[],
+): RawOsmFeature {
   return {
     type: 'Feature',
     id,
@@ -34,11 +38,15 @@ function collection(features: RawOsmFeature[]): RawOsmFeatureCollection {
 const LANDUSE_RING = ring(0, 0, 0.01, 0.01);
 const LANDUSE = polygonFeature('way/land-1', { landuse: 'residential' }, LANDUSE_RING);
 
-describe('computeFreeLand', () => {
+describe('computeSites', () => {
   it('takes a landuse polygon whole when a building sits on it', () => {
-    const building = polygonFeature('way/b-1', { building: 'yes' }, ring(0.003, 0.003, 0.007, 0.007));
+    const building = polygonFeature(
+      'way/b-1',
+      { building: 'yes' },
+      ring(0.003, 0.003, 0.007, 0.007),
+    );
 
-    const { freeLand, takenLanduse } = computeFreeLand(collection([LANDUSE]), collection([building]));
+    const { freeLand, takenLanduse } = computeSites(collection([LANDUSE]), collection([building]));
 
     expect(freeLand.features).toHaveLength(0);
     // Taken as a whole — the raw polygon, no hole punched out.
@@ -50,7 +58,7 @@ describe('computeFreeLand', () => {
     const far = polygonFeature('way/b-far', { building: 'yes' }, ring(10, 10, 11, 11));
     const edge = polygonFeature('way/b-edge', { building: 'yes' }, ring(0.009, 0.011, 0.02, 0.02));
 
-    const { freeLand } = computeFreeLand(collection([LANDUSE]), collection([far, edge]));
+    const { freeLand } = computeSites(collection([LANDUSE]), collection([far, edge]));
 
     expect(freeLand.features).toHaveLength(1);
     expect(freeLand.features[0].id).toBe('way/land-1');
@@ -65,19 +73,51 @@ describe('computeFreeLand', () => {
   });
 
   it('takes a landuse polygon fully covered by buildings', () => {
-    const cover = polygonFeature('way/b-cover', { building: 'yes' }, ring(-0.01, -0.01, 0.02, 0.02));
+    const cover = polygonFeature(
+      'way/b-cover',
+      { building: 'yes' },
+      ring(-0.01, -0.01, 0.02, 0.02),
+    );
 
-    const { freeLand, takenLanduse } = computeFreeLand(collection([LANDUSE]), collection([cover]));
+    const { freeLand, takenLanduse } = computeSites(collection([LANDUSE]), collection([cover]));
 
     expect(freeLand.features).toHaveLength(0);
     expect(takenLanduse.map((feature) => feature.id)).toEqual(['way/land-1']);
+  });
+
+  it('keeps a landuse polygon empty when the building only shares its bbox', () => {
+    // L-shaped polygon with an empty notch in the top-right corner: the
+    // building sits inside the notch, so the bboxes intersect but the
+    // geometries do not — the polygon must stay a candidate.
+    const lShaped = polygonFeature('way/l-shape', { landuse: 'farmland' }, [
+      [0, 0],
+      [0.01, 0],
+      [0.01, 0.008],
+      [0.008, 0.008],
+      [0.008, 0.01],
+      [0, 0.01],
+      [0, 0],
+    ]);
+    const notchBuilding = polygonFeature(
+      'way/b-notch',
+      { building: 'yes' },
+      ring(0.0085, 0.0085, 0.0095, 0.0095),
+    );
+
+    const { freeLand, takenLanduse } = computeSites(
+      collection([lShaped]),
+      collection([notchBuilding]),
+    );
+
+    expect(freeLand.features.map((feature) => feature.id)).toEqual(['way/l-shape']);
+    expect(takenLanduse).toHaveLength(0);
   });
 
   it('discards slivers below MIN_AREA_M2', () => {
     // ~4.9 m² square (0.00002° per side)
     const tiny = polygonFeature('way/tiny', { landuse: 'grass' }, ring(0, 0, 0.00002, 0.00002));
 
-    const { freeLand, takenLanduse } = computeFreeLand(collection([tiny, LANDUSE]), collection([]));
+    const { freeLand, takenLanduse } = computeSites(collection([tiny, LANDUSE]), collection([]));
 
     expect(freeLand.features.map((feature) => feature.id)).toEqual(['way/land-1']);
     expect(takenLanduse).toHaveLength(0);
@@ -89,18 +129,28 @@ describe('computeFreeLand', () => {
     const park = polygonFeature('way/park', { leisure: 'park' }, ring(0, 0, 0.01, 0.01));
     const field = polygonFeature('way/field', { landuse: 'farmland' }, ring(0, 0, 0.01, 0.01));
 
-    const { freeLand, takenLanduse } = computeFreeLand(
+    const { freeLand, takenLanduse } = computeSites(
       collection([wood, water, park, field]),
       collection([]),
     );
 
-    expect(freeLand.features.map((feature) => feature.properties.landuseType)).toEqual(['farmland']);
-    expect(takenLanduse.map((feature) => feature.id)).toEqual(['way/wood', 'way/water', 'way/park']);
+    expect(freeLand.features.map((feature) => feature.properties.landuseType)).toEqual([
+      'farmland',
+    ]);
+    expect(takenLanduse.map((feature) => feature.id)).toEqual([
+      'way/wood',
+      'way/water',
+      'way/park',
+    ]);
   });
 
   it('treats edge categories per policy: orchard empty, cemetery/quarry taken', () => {
     const orchard = polygonFeature('way/orchard', { landuse: 'orchard' }, ring(0, 0, 0.01, 0.01));
-    const cemetery = polygonFeature('way/cemetery', { landuse: 'cemetery' }, ring(2, 2, 2.01, 2.01));
+    const cemetery = polygonFeature(
+      'way/cemetery',
+      { landuse: 'cemetery' },
+      ring(2, 2, 2.01, 2.01),
+    );
     const quarry = polygonFeature('way/quarry', { landuse: 'quarry' }, ring(4, 4, 4.01, 4.01));
     // Co-tagged park: cover/amenity precedence must exclude it despite the grass zoning tag.
     const coTaggedPark = polygonFeature(
@@ -109,12 +159,14 @@ describe('computeFreeLand', () => {
       ring(6, 6, 6.01, 6.01),
     );
 
-    const { freeLand } = computeFreeLand(
+    const { freeLand } = computeSites(
       collection([orchard, cemetery, quarry, coTaggedPark]),
       collection([]),
     );
 
-    expect(freeLand.features.map((feature) => feature.properties.landuseType)).toEqual(['farmland']);
+    expect(freeLand.features.map((feature) => feature.properties.landuseType)).toEqual([
+      'farmland',
+    ]);
   });
 
   it('skips an invalid polygon without breaking the batch', () => {
@@ -130,7 +182,7 @@ describe('computeFreeLand', () => {
     (invalid.geometry as unknown as { coordinates: null }).coordinates = null;
     const far = polygonFeature('way/b-far', { building: 'yes' }, ring(10, 10, 11, 11));
 
-    const { freeLand, takenLanduse } = computeFreeLand(
+    const { freeLand, takenLanduse } = computeSites(
       collection([LANDUSE, invalid]),
       collection([far]),
     );
@@ -214,9 +266,15 @@ describe('computeViewportSites', () => {
   it('derives free-land candidates and taken features from one split', () => {
     const forest = polygonFeature('way/wood-1', { natural: 'wood' }, ring(0, 0, 0.01, 0.01));
     const meadow = polygonFeature('way/grass-1', { natural: 'meadow' }, ring(2, 2, 2.01, 2.01));
-    const building = polygonFeature('way/b-1', { building: 'yes' }, ring(2.003, 2.003, 2.007, 2.007));
+    const building = polygonFeature(
+      'way/b-1',
+      { building: 'yes' },
+      ring(2.003, 2.003, 2.007, 2.007),
+    );
 
-    const { freeLand, takenFeatures } = computeViewportSites(collection([forest, building, meadow]));
+    const { freeLand, takenFeatures } = computeViewportSites(
+      collection([forest, building, meadow]),
+    );
 
     // The built-on meadow is taken as a whole (step-12 product decision), so
     // nothing stays a free candidate; buildings come first in the taken output.

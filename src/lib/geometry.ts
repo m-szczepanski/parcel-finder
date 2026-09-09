@@ -1,4 +1,4 @@
-import { area as turfArea, bbox, centroid } from '@turf/turf';
+import { area as turfArea, booleanIntersects, bbox, centroid } from '@turf/turf';
 import type { BBox } from 'geojson';
 import { LAND_USE_TAG_MAP, MIN_AREA_M2, TAKEN_LAND_USE_TYPES } from '@/lib/config';
 import type {
@@ -41,15 +41,14 @@ export function computeViewportSites(data: RawOsmFeatureCollection): {
     }
   }
 
-  const { freeLand, takenLanduse } = computeFreeLand(
+  const { freeLand, takenLanduse } = computeSites(
     { type: 'FeatureCollection', features: landuse },
     { type: 'FeatureCollection', features: buildings },
   );
 
   return {
     freeLand,
-    // Taken sites for the red layer and click selection: buildings first, then
-    // taken land polygons — the order matters when polygons overlap.
+    // Buildings first, so land polygons stack above them within the red layer.
     takenFeatures: [...buildings, ...takenLanduse],
   };
 }
@@ -61,7 +60,7 @@ type SiteOutcome =
   | { kind: 'taken'; feature: RawOsmFeature }
   | { kind: 'sliver' };
 
-export function computeFreeLand(
+export function computeSites(
   landuse: RawOsmFeatureCollection,
   buildings: RawOsmFeatureCollection,
 ): { freeLand: CandidateSiteFeatureCollection; takenLanduse: RawOsmFeature[] } {
@@ -102,11 +101,14 @@ function classifySite(feature: RawOsmFeature, buildingIndex: IndexedBuilding[]):
     return { kind: 'taken', feature };
   }
 
-  const landuseBox = bbox(feature);
-
   // Step-12 product decision: any building on the polygon takes the whole
-  // polygon — a single barn marks the entire field taken (no remainder).
-  if (buildingIndex.some((building) => boxesIntersect(landuseBox, building.box))) {
+  // polygon — a single barn marks the entire field taken (no remainder). The
+  // bbox check is a prefilter only; the precise intersection test runs on the
+  // few matched pairs so bbox-corner near-misses stay empty.
+  const landuseBox = bbox(feature);
+  const bboxMatched = buildingIndex.filter((building) => boxesIntersect(landuseBox, building.box));
+
+  if (bboxMatched.some((building) => booleanIntersects(feature, building.feature))) {
     return { kind: 'taken', feature };
   }
 

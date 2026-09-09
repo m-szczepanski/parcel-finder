@@ -1,8 +1,5 @@
-import { act, render } from '@testing-library/react';
-import type { Map as LeafletMap } from 'leaflet';
-import { MapContainer } from 'react-leaflet';
-import { SelectedFeatureProvider, useSelectedFeature } from '@/hooks/useSelectedFeature';
-import { geoJsonPaths } from '@/test/leafletLayers';
+import { act } from '@testing-library/react';
+import { geoJsonPaths, renderOnMap } from '@/test/leafletLayers';
 import type { RawOsmFeature } from '@/types/geo';
 import { TakenSiteLayer } from './TakenSiteLayer';
 
@@ -43,37 +40,8 @@ const FEATURES: RawOsmFeature[] = [
   },
 ];
 
-function SelectionProbe() {
-  const { selectedFeature } = useSelectedFeature();
-
-  return (
-    <span data-testid="selection">
-      {selectedFeature
-        ? `${selectedFeature.properties.id}:${selectedFeature.properties.status}`
-        : 'none'}
-    </span>
-  );
-}
-
 function renderLayer() {
-  const mapRef: { current: LeafletMap | null } = { current: null };
-
-  const view = render(
-    <SelectedFeatureProvider>
-      <MapContainer
-        ref={(map) => {
-          mapRef.current = map ?? null;
-        }}
-        center={[52.15, 21.05]}
-        zoom={15}
-      >
-        <TakenSiteLayer features={FEATURES} />
-      </MapContainer>
-      <SelectionProbe />
-    </SelectedFeatureProvider>,
-  );
-
-  return { mapRef, view };
+  return renderOnMap(<TakenSiteLayer features={FEATURES} />);
 }
 
 describe('TakenSiteLayer', () => {

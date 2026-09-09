@@ -131,7 +131,7 @@ out skel qt;
 `lib/geometry.ts` exposes a pure function:
 
 ```ts
-function computeFreeLand(
+function computeSites(
   landuse: FeatureCollection<Polygon>,
   buildings: FeatureCollection<Polygon>,
 ): { freeLand: FeatureCollection<Polygon>; takenLanduse: RawOsmFeature[] };
@@ -140,8 +140,11 @@ function computeFreeLand(
 Approach (per landuse polygon):
 
 1. Taken land-use type (`TAKEN_LAND_USE_TYPES`) → promote the raw polygon to the taken output.
-2. A building whose bbox intersects the polygon takes it **as a whole** (step-12 product
+2. A building that actually intersects the polygon takes it **as a whole** (step-12 product
    decision: a single barn marks the whole field taken — no remainder/hole is computed).
+   The building bbox check is a cheap prefilter; the precise `turf.booleanIntersects` test
+   runs only on the few bbox-matched pairs, so bbox-corner near-misses (concave polygons)
+   stay empty.
 3. Discard slivers below a minimum area threshold (`MIN_AREA_M2`, 100 m² in `lib/config.ts` —
    at the zoom-15 gate that is ~3 px; smaller fragments are imprecise-tracing noise, not plots).
 4. Otherwise attach `area` (`turf.area`), `landuseType`, `status` (`empty`), and `id`, plus the
@@ -292,7 +295,7 @@ static site with no backend.
 
 1. Scaffold Vite + TS + Tailwind + shadcn/ui; verify `MapView` renders OSM tiles.
 2. Implement `lib/overpass.ts` with a hardcoded bbox first (no map wiring yet) — verify raw data shape.
-3. Implement `lib/geometry.ts` (`computeFreeLand`) against that hardcoded data; unit test it.
+3. Implement `lib/geometry.ts` (`computeSites`) against that hardcoded data; unit test it.
 4. Wire `useViewportData` to real map `moveend` events; add debounce + zoom gate.
 5. Render `FreeLandLayer`: transparent-gray hover styling (style-only) + click selection via `useSelectedFeature`; render `TakenSiteLayer` in red below it (section 3.7); a bare-map click deselects.
 6. Build `SiteDetails` as a right-side `Sheet` off the shared selection state, with the "taken" notice for taken sites.
