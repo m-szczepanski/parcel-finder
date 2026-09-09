@@ -14,30 +14,40 @@ parcel-finder/
 │   │   ├── map/
 │   │   │   ├── MapView.tsx       # Leaflet map wrapper (react-leaflet)
 │   │   │   ├── BasemapToggle.tsx # OSM / satellite switch
-│   │   │   └── FreeLandLayer.tsx # renders computed GeoJSON, hover styling + click selection
+│   │   │   ├── FreeLandLayer.tsx # renders computed GeoJSON, hover styling + click selection
+│   │   │   └── MapOverlay.tsx    # hint pills over the map (loading, zoom-in, no results)
 │   │   ├── sidebar/
 │   │   │   ├── SiteDetails.tsx   # shadcn Sheet (right side) with selected site data
 │   │   │   └── EmptyState.tsx    # shown when nothing is selected
-│   │   └── ui/                   # shadcn/ui generated components (button, card, sheet, etc.)
+│   │   └── ui/                   # shadcn/ui generated components (button, card, sheet, sonner, …)
 │   ├── lib/
 │   │   ├── config.ts             # tuning knobs: query tags, MIN_ZOOM, MIN_AREA_M2, classify/exclude tables
-│   │   ├── overpass.ts           # Overpass API query builder + fetch
+│   │   ├── overpass.ts           # Overpass API query builder + fetch + GeoJSON mapper
 │   │   ├── geometry.ts           # Turf-based computation (difference, area, etc.)
-│   │   ├── cache.ts              # bbox-keyed in-memory (or IndexedDB) cache
-│   │   └── geocode.ts            # optional Nominatim reverse-geocode helper
+│   │   ├── cache.ts              # bbox-keyed in-memory cache (LRU-capped)
+│   │   ├── format.ts             # display formatting helpers (area, …)
+│   │   ├── mapState.ts           # viewport/basemap persistence (localStorage)
+│   │   └── utils.ts              # cn() class-merge helper
 │   ├── hooks/
 │   │   ├── useViewportData.ts    # ties map moveend → debounced fetch → computed layer
-│   │   └── useSelectedFeature.ts # shared selection state; opens/closes the side panel
+│   │   └── useSelectedFeature.tsx # shared selection state; opens/closes the side panel
 │   ├── types/
-│   │   └── geo.ts                # shared TS types (GeoJSON feature properties, etc.)
+│   │   ├── geo.ts                # shared TS types (GeoJSON feature properties, etc.)
+│   │   └── overpass.ts           # Overpass response element types
+│   ├── test/
+│   │   └── memoryStorage.ts      # storage fake for tests
 │   └── styles/
-│       └── globals.css           # Tailwind base + shadcn theme tokens
-├── public/
+│       └── globals.css           # Tailwind v4 (CSS-first) + shadcn theme tokens — no tailwind.config.js
 ├── index.html
-├── tailwind.config.js
-├── vite.config.ts
+├── vite.config.ts                # also configures vitest (happy-dom, globals)
+├── postcss.config.js
+├── eslint.config.js
 └── tsconfig.json
 ```
+
+Modules with logic carry a co-located `*.test.ts(x)` file, run by `npm run test`. There is no
+`public/` folder and no server-side `geocode.ts` — Nominatim reverse-geocoding (optional in the
+product doc) is not implemented in v1.
 
 Rationale: `lib/` holds pure, testable functions with no React dependency (query building, geometry math, caching). `hooks/` wires that logic into React's lifecycle. `components/` stays presentational as much as possible.
 
@@ -58,7 +68,7 @@ Rationale: `lib/` holds pure, testable functions with no React dependency (query
         │
 5. fetch() → Overpass API (direct client-side call)
         │
-6. Response parsed → converted to GeoJSON (osmtogeojson or manual mapping)
+6. Response parsed → converted to GeoJSON by the custom mapper in lib/overpass.ts
         │
 7. lib/geometry.ts:
    - group landuse polygons vs. building polygons
@@ -105,7 +115,11 @@ out skel qt;
 
 - Injecting the current bbox
 - Choosing which tags to query — the tag list (`QUERY_TAGS`) lives in `lib/config.ts`, so the "what counts as land" heuristic is a config change, not a code hunt
-- Converting the raw Overpass JSON response into GeoJSON (via `osmtogeojson` or a small custom mapper if the dependency feels heavier than needed)
+- Converting the raw Overpass JSON response into GeoJSON with the custom mapper
+  `overpassToGeoJSON` — `osmtogeojson` was evaluated and rejected (vulnerable transitive
+  dependencies, and its extra features are unused since the app queries with `[out:json]`). The
+  mapper keeps closed ways carrying polygon tags as simple Polygons and skips the rest; relations
+  are not resolved (documented v1 limitation).
 
 ### 3.2 "Free land" computation
 
@@ -245,8 +259,14 @@ If the app grows (saved sites, filters, settings persisted across sessions), a l
 
 ## 6. Testing Approach
 
-- **Unit tests** (Vitest) for `lib/geometry.ts` and `lib/overpass.ts` — these are pure functions and the highest-value place to test, since they contain the actual "business logic" of the app.
-- **Component tests** (React Testing Library) for `SiteDetails` and `FreeLandLayer`'s hover behavior, using mocked feature data.
+- **Setup:** Vitest 4 with the `happy-dom` environment (not jsdom) and globals enabled, configured
+  in `vite.config.ts`; React Testing Library for component tests. `@testing-library/jest-dom` was
+  dropped — plain assertions. Tests run with `npm run test`.
+- **Unit tests** for the pure `lib/` modules (`geometry.ts`, `overpass.ts`, `cache.ts`,
+  `format.ts`, `mapState.ts`) and the `useViewportData` hook — these contain the actual "business
+  logic" of the app.
+- **Component tests** for `App`, `MapView`, `FreeLandLayer`, `BasemapToggle` and `SiteDetails`,
+  using mocked feature data.
 - **Manual/exploratory testing** for the map interaction itself — end-to-end map testing has a poor effort/value ratio for a personal project.
 
 ## 7. Environment & Config
