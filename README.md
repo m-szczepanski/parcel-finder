@@ -46,7 +46,7 @@ src/
 ├── components/
 │   ├── map/
 │   ├── sidebar/
-│   └── ui/            # shadcn/ui generated components
+│   └── ui/
 ├── hooks/
 ├── lib/
 ├── styles/
