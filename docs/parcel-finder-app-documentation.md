@@ -38,9 +38,9 @@ Open app → Map loads (geolocation if permitted → last known → default: War
    → App fetches OSM data (buildings + landuse) for current viewport
       (only above a minimum zoom level, debounced, cached per bbox)
    → App computes and classifies site polygons
-      (landuse/landcover minus building footprints = "empty";
-       buildings, forest, water, parks = "taken")
-   → Empty sites rendered as an interactive GeoJSON layer
+      (buildings, forest, water, parks, and landuse with any building on it = "taken";
+       the rest = "empty")
+   → Taken sites rendered in red, empty sites as an interactive green GeoJSON layer on top
    → On mouseover (empty sites only): polygon turns transparent gray
    → On mouseout: highlight reverts
    → On click (empty site): side panel slides in from the right with computed properties
@@ -62,7 +62,7 @@ Open app → Map loads (geolocation if permitted → last known → default: War
 | Base tiles           | OpenStreetMap standard tiles                   | default basemap                                                                                                          |
 | Imagery toggle       | Esri World Imagery (free XYZ tiles)            | visual sanity-check for "is this really empty?"                                                                          |
 | Spatial data source  | Overpass API                                   | buildings (`building=*`) and landuse/landcover (`landuse=*`, `natural=*`) for current viewport                           |
-| Geometry engine      | Turf.js                                        | `difference`, `area`, `bbox`, optionally `booleanPointInPolygon`                                                         |
+| Geometry engine      | Turf.js                                        | `area`, `bbox`, `centroid`                                                                                               |
 | Geocoding (optional) | Nominatim (OSM)                                | reverse-geocode a nearby address for the side panel                                                                      |
 | State management     | React state / Context (or Zustand if it grows) | no need for Redux at this scale                                                                                          |
 | Package manager      | npm                                            | used for all scripts in this repo                                                                                        |
@@ -151,9 +151,10 @@ happy-dom
 │          ▼                                      │
 │  ┌────────────────────────┐                     │
 │  │ GeoJSON "free land"     │                    │
-│  │ layer (computed)        │                    │
+│  │ layer (computed) + red  │                    │
+│  │ taken-sites layer       │                    │
 │  └───────────┬─────────────┘                    │
-│              │ turf.difference(landuse, bldgs)  │
+│              │ classify empty vs. taken (Turf)  │
 │              ▼                                  │
 │  ┌────────────────────────┐                     │
 │  │ Overpass fetch (bbox,   │                    │
@@ -168,14 +169,14 @@ happy-dom
 
 1. **Skeleton** — Vite + React + TS project, Tailwind + shadcn/ui set up, Leaflet map rendering with OSM base tiles, centered on the user's geolocation (fallback: last known, then Warsaw).
 2. **Data fetch** — Overpass query wired to map viewport (`moveend`), debounced, gated by minimum zoom.
-3. **Geometry computation** — buildings subtracted from landuse polygons via Turf, rendered as a GeoJSON layer.
+3. **Geometry computation** — landuse polygons classified empty vs. taken via Turf (a polygon with any building on it is taken as a whole), rendered as GeoJSON layers (green empty sites, red taken sites).
 4. **Interaction** — transparent-gray hover highlight on empty sites only (taken sites get no hover effect); clicking a site opens a right-side panel (shadcn `Sheet`) with land-use type, computed area, optional nearest address; clicked taken sites show a "taken" notice plus their available properties.
 5. **Polish** — satellite imagery toggle, bbox-based caching, loading/error states, basic empty-state handling.
 6. **Stretch goals** — subdivision suggestion logic, saved/favorited sites (local storage), shareable links to a given map view.
 
 ## 8. Open Questions / Decisions To Revisit
 
-- **Resolved:** forests, water, and parks/protected areas count as **taken**, not empty — "empty" is limited to fields and unused ground (farmland, meadow, grass, scrub, brownfield, etc.). Buildings are taken by definition. Taken sites are not hover-highlighted, but clicking one still opens the panel with a taken notice. Step 10 tuned the edge categories against real data: orchards and plant nurseries are empty (agriculture, like farmland); brownfield stays empty (policy-named); cemeteries, quarries, railways, construction sites, education/religious/garages/recreation grounds and military land are taken (maintained, restricted or in active use). Classification precedence: physical cover/amenity tags (`natural`, `leisure`, `boundary`) outrank `landuse` zoning, so a wood or park co-tagged with grass still counts as taken.
+- **Resolved:** forests, water, and parks/protected areas count as **taken**, not empty — "empty" is limited to fields and unused ground (farmland, meadow, grass, scrub, brownfield, etc.). Buildings are taken by definition. Taken sites are not hover-highlighted, but clicking one still opens the panel with a taken notice. Step 10 tuned the edge categories against real data: orchards and plant nurseries are empty (agriculture, like farmland); brownfield stays empty (policy-named); cemeteries, quarries, railways, construction sites, education/religious/garages/recreation grounds and military land are taken (maintained, restricted or in active use). Classification precedence: physical cover/amenity tags (`natural`, `leisure`, `boundary`) outrank `landuse` zoning, so a wood or park co-tagged with grass still counts as taken. Step 12 extended this: taken sites render **red** on the map (same opacities as the green candidates), and a landuse polygon with any building on it is taken **as a whole** — it never produces a green "empty" remainder with a hole. Conservative by design (a single barn marks the whole field taken); if that proves too aggressive in practice, revisit with a coverage threshold (share of polygon area built) during heuristics tuning.
 - **Resolved:** no backend proxy for v1 — direct client-side Overpass calls are sufficient. Over steps 02-08, calls remained stable (no persistent 429/504, CORS, or timeout issues) and client-side caching kept request volume low. Revisit if usage grows.
 - **Resolved (step 10):** minimum zoom for Overpass fetches is **15**. Measured on one dense-city viewport (Warsaw centre, 1440×900 px, same instance): zoom 13 = 166 MiB / 150k elements / ~17 s, zoom 14 = 62 MiB / 53k / ~6 s, zoom 15 = 25 MiB / 19k / ~3 s, zoom 16 = 8.7 MiB / 6.5k / ~2 s. 15 balances responsiveness against Overpass load; below it the "zoom in" hint shows.
 - **Resolved (step 10):** candidate sites smaller than **100 m²** are dropped as slivers — at the zoom-15 gate (~2.9 m/px in Warsaw) that is ~3 px, i.e. unclickable dots; 1,400 such candidates were measured per dense-city viewport while real plots (≥ ~10×10 m) stay. All tuning knobs (query tags, `MIN_ZOOM`, `MIN_AREA_M2`, classify/exclude tables) live in `src/lib/config.ts`.

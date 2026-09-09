@@ -1,7 +1,7 @@
 # 12 — Taken sites on the map
 
 **Depends on:** 03-05 (computed geometry, interactive layer, panel)
-**Status:** not started
+**Status:** done
 
 ## Goal
 
@@ -33,25 +33,29 @@ A site with buildings on it is **taken** — the whole polygon, not just the bui
 
 ## Tasks
 
-- [ ] `src/components/map/TakenSiteLayer.tsx`: react-leaflet `<GeoJSON>` rendering the raw
+- [x] `src/components/map/TakenSiteLayer.tsx`: react-leaflet `<GeoJSON>` rendering the raw
       taken features (`takenFeatures` — buildings, forest, water, parks **plus** landuse
       polygons promoted by the classification change below) in red: subtle fill (~0.15
       opacity) with a visible border, mirroring `FreeLandLayer`'s green values. Respect the
       same `belowMinZoom` gate as the free-land layer and the remount `key={dataVersion}`
       pattern.
-- [ ] Render order: taken layer below the free-land layer so green candidates stay on top
+- [x] Render order: taken layer below the free-land layer so green candidates stay on top
       where polygons are adjacent.
-- [ ] Geometry: in `computeFreeLand`, drop landuse polygons that contain buildings from the
+- [x] Geometry: in `computeFreeLand`, drop landuse polygons that contain buildings from the
       candidates (no difference/hole operation for them) and add those polygons to the taken
       output collection so they render red. Keep the rest of the pipeline unchanged; update
       the unit tests/fixtures (a "landuse with building hole" fixture becomes a taken polygon).
-- [ ] Taken-layer click selects the feature with `status: 'taken'` via the same selection
+- [x] Taken-layer click selects the feature with `status: 'taken'` via the same selection
       context and propagation stop as `FreeLandLayer` clicks. Hover on taken sites stays a
       no-op (product decision: taken sites get no hover effect).
-- [ ] Retire or keep the bare-map `TakenSiteCheck` (tech doc section 3.7): once every taken
+- [x] Retire or keep the bare-map `TakenSiteCheck` (tech doc section 3.7): once every taken
       feature is rendered and clickable it is redundant — remove it only after verifying
       coverage (multipolygon relations, mixed tag combos) leaves no clickable gap.
-- [ ] Sync the product decision into `docs/parcel-finder-app-documentation.md` section 8
+      Removed: the query fetches closed ways only (relations are skipped in the mapper), and
+      every raw feature lands in exactly one bucket — building, classified-taken landuse,
+      built-on landuse, or green candidate (slivers were unclickable before too) — so no
+      clickable gap remains. A bare-map click now just deselects.
+- [x] Sync the product decision into `docs/parcel-finder-app-documentation.md` section 8
       (ground rules: as part of step 11).
 
 ## Implementation notes
@@ -65,12 +69,12 @@ A site with buildings on it is **taken** — the whole polygon, not just the bui
 
 ## Exit criteria
 
-- [ ] Buildings, forest, water and parks render red; a landuse polygon with a building on it
+- [x] Buildings, forest, water and parks render red; a landuse polygon with a building on it
       is red (or absent) — never green with a hole.
-- [ ] Clicking any red site opens the panel with the taken notice; a bare-map click still
+- [x] Clicking any red site opens the panel with the taken notice; a bare-map click still
       closes the panel.
-- [ ] No hover effect on taken sites; empty sites behave exactly as before.
-- [ ] lint / typecheck / test / build all green.
+- [x] No hover effect on taken sites; empty sites behave exactly as before.
+- [x] lint / typecheck / test / build all green.
 
 ## Files touched
 

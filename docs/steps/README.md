@@ -19,26 +19,26 @@ parallel once the core chain (01-05) is done.
 
 Interaction model (product decision): hover highlights **empty** sites only (transparent gray);
 clicking a site opens a side panel from the right — taken sites (buildings, forest, water) show
-a "taken" notice in the same panel instead of any hover effect.
-Planned change (step 12): taken sites will also be marked red on the map, and landuse polygons
-containing buildings will count as taken as a whole.
+a "taken" notice in the same panel instead of any hover effect. Step 12 implemented: taken sites
+are also marked red on the map, and landuse polygons containing buildings count as taken as a
+whole (no green remainder with a hole).
 
 ## Status
 
-| Step | Feature                | Status      |
-| ---- | ---------------------- | ----------- |
-| 01   | Map view               | done        |
-| 02   | Overpass data pipeline | done        |
-| 03   | Free-land geometry     | done        |
-| 04   | Free-land layer        | done        |
-| 05   | Side panel (Sheet)     | done        |
-| 06   | Basemap toggle         | done        |
-| 07   | Viewport caching       | done        |
-| 08   | States and feedback    | done        |
-| 09   | Proxy: build or delete | done        |
-| 10   | Heuristics tuning      | done        |
-| 11   | Docs and repo hygiene  | done        |
-| 12   | Taken sites on the map | not started |
+| Step | Feature                | Status |
+| ---- | ---------------------- | ------ |
+| 01   | Map view               | done   |
+| 02   | Overpass data pipeline | done   |
+| 03   | Free-land geometry     | done   |
+| 04   | Free-land layer        | done   |
+| 05   | Side panel (Sheet)     | done   |
+| 06   | Basemap toggle         | done   |
+| 07   | Viewport caching       | done   |
+| 08   | States and feedback    | done   |
+| 09   | Proxy: build or delete | done   |
+| 10   | Heuristics tuning      | done   |
+| 11   | Docs and repo hygiene  | done   |
+| 12   | Taken sites on the map | done   |
 
 ## Ground rules
 
