@@ -1,8 +1,8 @@
 import { act, fireEvent, render } from '@testing-library/react';
-import { GeoJSON as LeafletGeoJSON } from 'leaflet';
-import type { Layer, Map as LeafletMap, Path } from 'leaflet';
+import type { Map as LeafletMap } from 'leaflet';
 import { MapContainer } from 'react-leaflet';
 import { SelectedFeatureProvider, useSelectedFeature } from '@/hooks/useSelectedFeature';
+import { geoJsonPaths } from '@/test/leafletLayers';
 import type { CandidateSiteFeatureCollection } from '@/types/geo';
 import { FreeLandLayer } from './FreeLandLayer';
 
@@ -80,17 +80,6 @@ function renderLayer() {
   return { mapRef, view };
 }
 
-function candidatePaths(map: LeafletMap): Path[] {
-  const layers: Layer[] = [];
-  map.eachLayer((layer) => {
-    if (layer instanceof LeafletGeoJSON) {
-      layers.push(...layer.getLayers());
-    }
-  });
-
-  return layers as Path[];
-}
-
 describe('FreeLandLayer', () => {
   it('renders one interactive path per candidate feature', () => {
     const { view } = renderLayer();
@@ -110,7 +99,7 @@ describe('FreeLandLayer', () => {
 
   it('highlights on hover with the transparent gray style and reverts on mouseout', () => {
     const { mapRef } = renderLayer();
-    const path = candidatePaths(mapRef.current!)[0];
+    const path = geoJsonPaths(mapRef.current!)[0];
 
     path.fire('mouseover');
 
@@ -125,7 +114,7 @@ describe('FreeLandLayer', () => {
 
   it('stores the clicked feature in the selection context and keeps the gray style', () => {
     const { mapRef, view } = renderLayer();
-    const path = candidatePaths(mapRef.current!)[0];
+    const path = geoJsonPaths(mapRef.current!)[0];
 
     act(() => {
       path.fire('click');
@@ -142,7 +131,7 @@ describe('FreeLandLayer', () => {
 
   it('reverts the previously selected polygon when another one is clicked', () => {
     const { mapRef, view } = renderLayer();
-    const [first, second] = candidatePaths(mapRef.current!);
+    const [first, second] = geoJsonPaths(mapRef.current!);
 
     act(() => {
       first.fire('click');
@@ -158,7 +147,7 @@ describe('FreeLandLayer', () => {
 
   it('reverts the gray style when the selection is cleared elsewhere', () => {
     const { mapRef, view } = renderLayer();
-    const path = candidatePaths(mapRef.current!)[0];
+    const path = geoJsonPaths(mapRef.current!)[0];
 
     act(() => {
       path.fire('click');

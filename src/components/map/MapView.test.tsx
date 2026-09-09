@@ -4,6 +4,7 @@ import type { Map as LeafletMap } from 'leaflet';
 import { SelectedFeatureProvider, useSelectedFeature } from '@/hooks/useSelectedFeature';
 import { DEFAULT_VIEW, saveBasemap } from '@/lib/mapState';
 import { createMemoryStorage } from '@/test/memoryStorage';
+import { geoJsonPaths } from '@/test/leafletLayers';
 import type { CandidateSiteFeatureCollection, RawOsmFeature } from '@/types/geo';
 import { MapView } from './MapView';
 
@@ -123,7 +124,7 @@ describe('MapView', () => {
     expect(paths[1].getAttribute('stroke')).toBe('#059669');
   });
 
-  it('selects a taken site on a bare-map click inside it and clears on a miss', () => {
+  it('selects a taken site from the red layer and clears on a bare-map click', () => {
     const mapRef: { current: LeafletMap | null } = { current: null };
     const { getByTestId } = render(
       <SelectedFeatureProvider>
@@ -138,9 +139,10 @@ describe('MapView', () => {
     );
 
     const map = mapRef.current!;
+    const [taken] = geoJsonPaths(map);
 
     act(() => {
-      map.fire('click', { type: 'click', latlng: latLng(52.15, 21.05) });
+      taken.fire('click');
     });
 
     expect(getByTestId('selection').textContent).toBe('way/b-1:taken');

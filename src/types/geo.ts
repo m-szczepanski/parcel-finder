@@ -61,8 +61,8 @@ export type RawOsmFeature = {
   };
 };
 
-// A raw OSM polygon selected through the map-level taken-site check: the raw
-// properties (tags drive the panel content) plus the discriminating status.
+// A raw OSM polygon selected from the taken layer: the raw properties (tags
+// drive the panel content) plus the discriminating status.
 export type TakenSiteFeature = {
   type: 'Feature';
   id: string;

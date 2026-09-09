@@ -75,7 +75,7 @@ export function FreeLandLayer({ data }: FreeLandLayerProps) {
             }
           },
           click: (event) => {
-            // Keep the click from reaching the map-level taken-site check.
+            // Keep the click from reaching the map-level deselect handler.
             DomEvent.stopPropagation(event);
 
             if (!isSelectionStyled()) {

@@ -1,6 +1,5 @@
 import { useEffect, useState, type Ref } from 'react';
 import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
-import { booleanPointInPolygon, point } from '@turf/turf';
 import type { Map as LeafletMap } from 'leaflet';
 import { BasemapToggle } from '@/components/map/BasemapToggle';
 import { FreeLandLayer } from '@/components/map/FreeLandLayer';
@@ -74,7 +73,7 @@ export function MapView({
         // must change per fetch to force a fresh layer.
         <FreeLandLayer key={dataVersion} data={freeLand} />
       )}
-      <TakenSiteCheck features={takenFeatures} />
+      <DeselectOnMapClick />
       <ViewportController />
       <BasemapToggle value={basemap} onChange={handleBasemapChange} />
       <MapOverlay loading={loading} belowMinZoom={belowMinZoom} showNoResults={showNoResults} />
@@ -82,23 +81,13 @@ export function MapView({
   );
 }
 
-// A click no polygon layer consumed lands here (tech doc 3.7): the point is
-// checked against the raw taken features (buildings first, then taken land) —
-// a hit selects the site as taken for the panel, a miss closes it.
-function TakenSiteCheck({ features }: { features: RawOsmFeature[] }) {
-  const { selectFeature, clearSelection } = useSelectedFeature();
+// A click no polygon layer consumed is a bare-map click: the panel closes.
+// Polygon layers stop propagation on their own clicks (tech doc 3.3).
+function DeselectOnMapClick() {
+  const { clearSelection } = useSelectedFeature();
 
   useMapEvents({
-    click: (event) => {
-      const clicked = point([event.latlng.lng, event.latlng.lat]);
-      const hit = features.find((feature) => booleanPointInPolygon(clicked, feature));
-
-      if (hit) {
-        selectFeature({ ...hit, properties: { ...hit.properties, status: 'taken' } });
-      } else {
-        clearSelection();
-      }
-    },
+    click: () => clearSelection(),
   });
 
   return null;

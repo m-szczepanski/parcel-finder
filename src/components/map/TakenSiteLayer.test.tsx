@@ -1,8 +1,8 @@
 import { act, render } from '@testing-library/react';
-import { GeoJSON as LeafletGeoJSON } from 'leaflet';
-import type { Layer, Map as LeafletMap, Path } from 'leaflet';
+import type { Map as LeafletMap } from 'leaflet';
 import { MapContainer } from 'react-leaflet';
 import { SelectedFeatureProvider, useSelectedFeature } from '@/hooks/useSelectedFeature';
+import { geoJsonPaths } from '@/test/leafletLayers';
 import type { RawOsmFeature } from '@/types/geo';
 import { TakenSiteLayer } from './TakenSiteLayer';
 
@@ -76,17 +76,6 @@ function renderLayer() {
   return { mapRef, view };
 }
 
-function takenPaths(map: LeafletMap): Path[] {
-  const layers: Layer[] = [];
-  map.eachLayer((layer) => {
-    if (layer instanceof LeafletGeoJSON) {
-      layers.push(...layer.getLayers());
-    }
-  });
-
-  return layers as Path[];
-}
-
 describe('TakenSiteLayer', () => {
   it('renders one path per taken feature', () => {
     const { view } = renderLayer();
@@ -106,7 +95,7 @@ describe('TakenSiteLayer', () => {
 
   it('selects the feature as taken on click', () => {
     const { mapRef, view } = renderLayer();
-    const [building, wood] = takenPaths(mapRef.current!);
+    const [building, wood] = geoJsonPaths(mapRef.current!);
 
     act(() => {
       building.fire('click');
@@ -123,7 +112,7 @@ describe('TakenSiteLayer', () => {
 
   it('keeps the red style on hover — no hover effect for taken sites', () => {
     const { mapRef } = renderLayer();
-    const path = takenPaths(mapRef.current!)[0];
+    const path = geoJsonPaths(mapRef.current!)[0];
 
     path.fire('mouseover');
     path.fire('mouseout');
