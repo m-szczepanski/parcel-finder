@@ -66,12 +66,13 @@ export function MapView({
       {/* The taken layer sits below the free-land layer so green candidates
           stay on top where polygons are adjacent. Both GeoJSON layers remount
           per fetch: react-leaflet's GeoJSON ignores data updates after
-          creation, so the key must change to force a fresh layer. */}
+          creation, so the key must change to force a fresh layer. Keys are
+          prefixed so the sibling layers never collide. */}
       {!belowMinZoom && takenFeatures.length > 0 && (
-        <TakenSiteLayer key={dataVersion} features={takenFeatures} />
+        <TakenSiteLayer key={`taken-${dataVersion}`} features={takenFeatures} />
       )}
       {!belowMinZoom && freeLand && freeLand.features.length > 0 && (
-        <FreeLandLayer key={dataVersion} data={freeLand} />
+        <FreeLandLayer key={`free-${dataVersion}`} data={freeLand} />
       )}
       <DeselectOnMapClick />
       <ViewportController />
