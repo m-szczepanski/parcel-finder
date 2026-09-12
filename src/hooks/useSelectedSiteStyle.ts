@@ -17,7 +17,7 @@ export function useSelectedSiteStyle(defaultStyle: PathOptions, selectedStyle: P
       selection.layer.setStyle(defaultStyle);
       selectedLayerRef.current = null;
     }
-  }, [selectedFeature, defaultStyle, selectedStyle]);
+  }, [selectedFeature, defaultStyle]);
 
   return {
     selectedFeature,

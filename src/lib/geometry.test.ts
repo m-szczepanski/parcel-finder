@@ -4,7 +4,6 @@ import {
   computeSites,
   computeViewportSites,
   classifyLandUse,
-  normalizeViewportBounds,
 } from './geometry';
 
 function ring(west: number, south: number, east: number, north: number): Position[] {
@@ -245,20 +244,6 @@ describe('classifyLandUse', () => {
   it('prefers physical cover and amenity tags over landuse zoning', () => {
     expect(classifyLandUse({ landuse: 'residential', natural: 'wood' })).toBe('forest');
     expect(classifyLandUse({ landuse: 'grass', leisure: 'park' })).toBe('park');
-  });
-});
-
-describe('normalizeViewportBounds', () => {
-  it('returns bounds unchanged when already ordered', () => {
-    const bounds = { south: 1, west: 2, north: 3, east: 4 };
-
-    expect(normalizeViewportBounds(bounds)).toEqual(bounds);
-  });
-
-  it('swaps inverted south/north and west/east values', () => {
-    const bounds = { south: 3, west: 4, north: 1, east: 2 };
-
-    expect(normalizeViewportBounds(bounds)).toEqual({ south: 1, west: 2, north: 3, east: 4 });
   });
 });
 

@@ -63,7 +63,6 @@ type SiteSummary = {
   landUseLabel: string;
   area: number;
   centroid?: [number, number];
-  address?: string;
   osmUrl: string;
 };
 
@@ -84,7 +83,7 @@ function toSummary(feature: CandidateSiteFeature | TakenSiteFeature): SiteSummar
     };
   }
 
-  const { landuseType, area, centroid, address } = feature.properties;
+  const { landuseType, area, centroid } = feature.properties;
 
   return {
     id,
@@ -92,7 +91,6 @@ function toSummary(feature: CandidateSiteFeature | TakenSiteFeature): SiteSummar
     landUseLabel: LAND_USE_LABELS[landuseType],
     area,
     centroid,
-    address,
     osmUrl,
   };
 }
@@ -111,11 +109,6 @@ function propertyRows(summary: SiteSummary): { term: string; detail: string }[] 
 
   if (summary.centroid) {
     rows.push({ term: 'Coordinates', detail: formatCoordinates(summary.centroid) });
-  }
-
-  // Nominatim geocoding is deferred (step index, deferred ideas).
-  if (summary.address) {
-    rows.push({ term: 'Address', detail: summary.address });
   }
 
   return rows;

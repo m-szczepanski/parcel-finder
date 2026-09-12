@@ -141,17 +141,3 @@ function boxesIntersect(a: BBox, b: BBox): boolean {
   return a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
 }
 
-export function normalizeViewportBounds(bounds: {
-  south: number;
-  west: number;
-  north: number;
-  east: number;
-}) {
-  return {
-    ...bounds,
-    south: Math.min(bounds.south, bounds.north),
-    west: Math.min(bounds.west, bounds.east),
-    north: Math.max(bounds.south, bounds.north),
-    east: Math.max(bounds.west, bounds.east),
-  };
-}

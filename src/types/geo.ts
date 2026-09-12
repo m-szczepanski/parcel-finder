@@ -27,8 +27,6 @@ export type CandidateSiteProperties = {
   area: number;
   status: 'empty';
   centroid?: [number, number];
-  address?: string;
-  source?: 'overpass';
 };
 
 export type CandidateSiteFeature = {

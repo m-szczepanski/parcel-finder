@@ -12,7 +12,7 @@ const GRID_SIZE = 0.01;
 const SNAP_TOLERANCE = 1e-9;
 
 // Keeps memory bounded on long sessions; the oldest area is dropped first.
-export const MAX_CACHE_ENTRIES = 50;
+const MAX_CACHE_ENTRIES = 50;
 
 function snapDown(value: number): number {
   return Math.floor(value / GRID_SIZE + SNAP_TOLERANCE) * GRID_SIZE;
