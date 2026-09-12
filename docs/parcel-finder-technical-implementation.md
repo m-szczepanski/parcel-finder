@@ -14,7 +14,8 @@ parcel-finder/
 │   │   ├── map/
 │   │   │   ├── MapView.tsx       # Leaflet map wrapper (react-leaflet)
 │   │   │   ├── BasemapToggle.tsx # OSM / satellite switch
-│   │   │   ├── FreeLandLayer.tsx # renders computed GeoJSON, hover styling + click selection
+│   │   │   ├── FreeLandLayer.tsx # renders free candidates, hover styling + click selection
+│   │   │   ├── TakenSiteLayer.tsx# renders raw taken features in red, click selection
 │   │   │   └── MapOverlay.tsx    # hint pills over the map (loading, zoom-in, no results)
 │   │   ├── sidebar/
 │   │   │   ├── SiteDetails.tsx   # shadcn Sheet (right side) with selected site data
@@ -23,7 +24,7 @@ parcel-finder/
 │   ├── lib/
 │   │   ├── config.ts             # tuning knobs: query tags, MIN_ZOOM, MIN_AREA_M2, classify/exclude tables
 │   │   ├── overpass.ts           # Overpass API query builder + fetch + GeoJSON mapper
-│   │   ├── geometry.ts           # Turf-based computation (difference, area, etc.)
+│   │   ├── geometry.ts           # Turf-based computation (area, bbox, centroid, …)
 │   │   ├── cache.ts              # bbox-keyed in-memory cache (LRU-capped)
 │   │   ├── format.ts             # display formatting helpers (area, …)
 │   │   ├── mapState.ts           # viewport/basemap persistence (localStorage)
@@ -35,7 +36,8 @@ parcel-finder/
 │   │   ├── geo.ts                # shared TS types (GeoJSON feature properties, etc.)
 │   │   └── overpass.ts           # Overpass response element types
 │   ├── test/
-│   │   └── memoryStorage.ts      # storage fake for tests
+│   │   ├── memoryStorage.ts      # storage fake for tests
+│   │   └── leafletLayers.ts      # test helper: GeoJSON paths from a rendered map
 │   └── styles/
 │       └── globals.css           # Tailwind v4 (CSS-first) + shadcn theme tokens — no tailwind.config.js
 ├── index.html
@@ -72,22 +74,25 @@ Rationale: `lib/` holds pure, testable functions with no React dependency (query
         │
 7. lib/geometry.ts:
    - group landuse polygons vs. building polygons
-   - for each landuse polygon: turf.difference(landuse, unionOfOverlappingBuildings)
-   - result = candidate "free land" polygons
-   - attach computed properties: area (turf.area), landuse tag, centroid
+   - for each landuse polygon: a building on it (bbox intersect) takes the
+     polygon as a whole; taken land-use types join the taken output the same way
+   - result = candidate "free land" polygons + raw taken polygons
+   - attach computed properties to candidates: area (turf.area), landuse tag, centroid
         │
 8. Result stored in cache (keyed by bbox, or by tile if using a tiling scheme)
         │
-9. FreeLandLayer renders result as <GeoJSON> react-leaflet layer
+9. TakenSiteLayer renders the raw taken features in red (below), FreeLandLayer
+   renders the candidates on top — both as <GeoJSON> react-leaflet layers
         │
 10. User hovers an empty-site polygon → Leaflet fires mouseover → layer restyled
-    to transparent gray (style-only; no shared state change)
+    to transparent gray (style-only; no shared state change; taken sites get
+    no hover effect)
         │
-11. User clicks an empty-site polygon → useSelectedFeature stores it and opens the side Sheet
+11. User clicks a polygon → useSelectedFeature stores it (taken status for the
+    red layer) and opens the side Sheet
         │
-12. Click elsewhere on the map → taken-site check (section 3.7): point-in-polygon
-    against cached building/taken polygons → hit: selected as "taken";
-    no hit: selection cleared, Sheet closes
+12. Click elsewhere on the map (bare map, no polygon consumed the click) →
+    selection cleared, Sheet closes
         │
 13. SiteDetails Sheet renders the selected site's properties (with a "taken"
     notice for taken sites)
@@ -126,20 +131,24 @@ out skel qt;
 `lib/geometry.ts` exposes a pure function:
 
 ```ts
-function computeFreeLand(
+function computeSites(
   landuse: FeatureCollection<Polygon>,
   buildings: FeatureCollection<Polygon>,
-): FeatureCollection<Polygon>;
+): { freeLand: FeatureCollection<Polygon>; takenLanduse: RawOsmFeature[] };
 ```
 
-Approach:
+Approach (per landuse polygon):
 
-1. For each landuse polygon, find buildings whose bbox intersects it (cheap pre-filter before expensive geometry ops).
-2. Union the intersecting buildings (`turf.union`) if there's more than one.
-3. Subtract that union from the landuse polygon (`turf.difference`).
-4. Discard slivers below a minimum area threshold (`MIN_AREA_M2`, 100 m² in `lib/config.ts` —
+1. Taken land-use type (`TAKEN_LAND_USE_TYPES`) → promote the raw polygon to the taken output.
+2. A building that actually intersects the polygon takes it **as a whole** (step-12 product
+   decision: a single barn marks the whole field taken — no remainder/hole is computed).
+   The building bbox check is a cheap prefilter; the precise `turf.booleanIntersects` test
+   runs only on the few bbox-matched pairs, so bbox-corner near-misses (concave polygons)
+   stay empty.
+3. Discard slivers below a minimum area threshold (`MIN_AREA_M2`, 100 m² in `lib/config.ts` —
    at the zoom-15 gate that is ~3 px; smaller fragments are imprecise-tracing noise, not plots).
-5. Attach `area`, `landuseType`, `status` (`empty`), and `id` to each result's `properties`.
+4. Otherwise attach `area` (`turf.area`), `landuseType`, `status` (`empty`), and `id`, plus the
+   centroid, and keep it as a free-land candidate.
 
 `classifyLandUse` enforces the empty/taken policy from the product doc; the classify table
 (`LAND_USE_TAG_MAP`) and the excluded types (`TAKEN_LAND_USE_TYPES`) live in `lib/config.ts`.
@@ -150,9 +159,9 @@ Forests (`natural=wood`), water, parks/protected areas and the tuned edge catego
 military) are **taken** and never become candidates; farmland, orchards, meadow, grass, scrub,
 brownfield and similar are **empty**. Buildings are taken by definition.
 
-Only **empty** candidates come out of `computeFreeLand`. The raw fetched features (buildings,
-forest/water/park polygons — everything classified **taken**) are kept from the step-02 fetch and
-are used by the click-time taken-site check (section 3.7).
+`computeViewportSites` assembles the two outputs in one pass over the raw fetch: the free-land
+candidates for the green layer, and the raw taken features (buildings first, then the promoted
+and classified-taken landuse polygons) for the red layer.
 
 This function is pure and unit-testable independent of the map/UI.
 
@@ -175,7 +184,7 @@ const hoverStyle = { fillOpacity: 0.3, color: '#9ca3af', fillColor: '#9ca3af' };
       mouseover: (e) => e.target.setStyle(hoverStyle),
       mouseout: (e) => e.target.setStyle(defaultStyle),
       click: (e) => {
-        L.DomEvent.stopPropagation(e); // keep the map-level taken-check (3.7) from firing
+        L.DomEvent.stopPropagation(e); // keep the map-level deselect handler from firing
         selectFeature({ ...feature, properties: { ...feature.properties, status: 'empty' } });
       },
     });
@@ -188,11 +197,15 @@ Key points:
 - Hovering updates the layer style only — it deliberately does **not** touch shared state or the
   panel (product decision: the panel opens on click).
 - `selectFeature` comes from `useSelectedFeature`, a small Context-backed hook that holds the
-  selected feature and drives the side `Sheet` (open/close + content). The selected polygon keeps
-  the gray style while selected; deselecting reverts it.
+  selected feature and drives the side `Sheet` (open/close + content). While selected, the
+  clicked polygon keeps a distinct highlighted style (weight-2 border, brighter fill — emerald
+  for empty sites, red for taken sites), shared with the taken layer through
+  `useSelectedSiteStyle`; deselecting reverts it. The sheet's map overlay is a light dim only
+  — no backdrop blur, so the selected site stays crisp.
 - Features carry a `status` (`'empty'` | `'taken'`) so `SiteDetails` can show the taken notice
   when applicable.
-- Clicks that miss every empty polygon fall through to the map-level handler (section 3.7).
+- Clicks on taken sites are consumed by the red layer (section 3.7); clicks that miss every
+  polygon fall through to the map-level handler, which clears the selection.
 
 ### 3.4 Caching strategy
 
@@ -218,24 +231,27 @@ client-side protections already in place keep request volume low:
 Revisit if usage grows (e.g. multiple users or heavy daily use), at which point an in-memory cache
 behind a single Overpass forwarder is the smallest viable option.
 
-### 3.7 Taken-site detection (click fallback)
+### 3.7 Taken sites on the map
 
-Empty candidates are the only rendered/interactive polygons, so a click on a taken site (a
-building, a forest, a lake) hits the bare map. A map-level `click` handler on `MapContainer`
-resolves it:
+Since step 12, taken sites are rendered and clickable — the old map-level point-in-polygon
+fallback was retired once the layer covered every fetched feature:
 
-1. Skip if a polygon layer already consumed the click (layer clicks call
-   `L.DomEvent.stopPropagation`, see 3.3).
-2. Build a point from the click lat/lng and run `turf.booleanPointInPolygon` against the cached
-   raw viewport features — building polygons first, then taken landuse/natural polygons
-   (everything in `TAKEN_LAND_USE_TYPES`, `lib/config.ts`).
-3. On a hit: select that raw feature with `status: 'taken'` — the Sheet opens showing the taken
-   notice plus its properties (type from tags, `turf.area` for polygons).
-4. On a miss (no OSM polygon under the cursor): clear the selection and close the Sheet.
+- `TakenSiteLayer` renders the raw taken features (buildings, forest/water/park polygons,
+  built-on landuse polygons) in red — subtle fill at 0.15 opacity with a visible border, the
+  same opacities as the green layer. It sits **below** the free-land layer so green candidates
+  stay on top where polygons are adjacent, and respects the same `belowMinZoom` gate and
+  remount-per-fetch `key` pattern.
+- A landuse polygon with a building on it is taken **as a whole** (section 3.2) — it renders
+  red and never appears as a green remainder with a hole.
+- Clicking a red feature selects it with `status: 'taken'` (same selection context, propagation
+  stop as the free-land layer); the Sheet opens showing the taken notice plus its properties
+  (type from tags, `turf.area` on open). Taken sites get **no hover effect** — the red fill is
+  the cue.
+- A bare-map click (no polygon consumed it) clears the selection and closes the Sheet.
 
-Limitation (by design): ground with no OSM landuse/landcover tags is undetectable — it behaves
-like a miss and simply closes the panel. This is part of the documented "heuristic approximation"
-caveat.
+Limitation (by design): multipolygon relations are not fetched (section 3.1), so ground mapped
+only as a relation is undetectable — a bare-map click there simply closes the panel. This is
+part of the documented "heuristic approximation" caveat.
 
 ## 4. State Management
 
@@ -265,8 +281,8 @@ If the app grows (saved sites, filters, settings persisted across sessions), a l
 - **Unit tests** for the pure `lib/` modules (`geometry.ts`, `overpass.ts`, `cache.ts`,
   `format.ts`, `mapState.ts`) and the `useViewportData` hook — these contain the actual "business
   logic" of the app.
-- **Component tests** for `App`, `MapView`, `FreeLandLayer`, `BasemapToggle` and `SiteDetails`,
-  using mocked feature data.
+- **Component tests** for `App`, `MapView`, `FreeLandLayer`, `TakenSiteLayer`, `BasemapToggle`
+  and `SiteDetails`, using mocked feature data.
 - **Manual/exploratory testing** for the map interaction itself — end-to-end map testing has a poor effort/value ratio for a personal project.
 
 ## 7. Environment & Config
@@ -282,9 +298,9 @@ static site with no backend.
 
 1. Scaffold Vite + TS + Tailwind + shadcn/ui; verify `MapView` renders OSM tiles.
 2. Implement `lib/overpass.ts` with a hardcoded bbox first (no map wiring yet) — verify raw data shape.
-3. Implement `lib/geometry.ts` (`computeFreeLand`) against that hardcoded data; unit test it.
+3. Implement `lib/geometry.ts` (`computeSites`) against that hardcoded data; unit test it.
 4. Wire `useViewportData` to real map `moveend` events; add debounce + zoom gate.
-5. Render `FreeLandLayer`: transparent-gray hover styling (style-only) + click selection via `useSelectedFeature`; add the map-level taken-site check (section 3.7).
+5. Render `FreeLandLayer`: transparent-gray hover styling (style-only) + click selection via `useSelectedFeature`; render `TakenSiteLayer` in red below it (section 3.7); a bare-map click deselects.
 6. Build `SiteDetails` as a right-side `Sheet` off the shared selection state, with the "taken" notice for taken sites.
 7. Add caching layer, error/empty states, basemap toggle.
 8. (Stretch) subdivision suggestion module, saved sites, shareable view links.

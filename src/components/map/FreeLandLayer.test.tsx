@@ -1,8 +1,5 @@
-import { act, fireEvent, render } from '@testing-library/react';
-import { GeoJSON as LeafletGeoJSON } from 'leaflet';
-import type { Layer, Map as LeafletMap, Path } from 'leaflet';
-import { MapContainer } from 'react-leaflet';
-import { SelectedFeatureProvider, useSelectedFeature } from '@/hooks/useSelectedFeature';
+import { act, fireEvent } from '@testing-library/react';
+import { geoJsonPaths, renderOnMap } from '@/test/leafletLayers';
 import type { CandidateSiteFeatureCollection } from '@/types/geo';
 import { FreeLandLayer } from './FreeLandLayer';
 
@@ -46,49 +43,8 @@ const COLLECTION: CandidateSiteFeatureCollection = {
   ],
 };
 
-function SelectionProbe() {
-  const { selectedFeature, clearSelection } = useSelectedFeature();
-
-  return (
-    <div>
-      <span data-testid="selection">{selectedFeature?.properties.id ?? 'none'}</span>
-      <button type="button" onClick={clearSelection}>
-        clear
-      </button>
-    </div>
-  );
-}
-
 function renderLayer() {
-  const mapRef: { current: LeafletMap | null } = { current: null };
-
-  const view = render(
-    <SelectedFeatureProvider>
-      <MapContainer
-        ref={(map) => {
-          mapRef.current = map ?? null;
-        }}
-        center={[52.15, 21.05]}
-        zoom={15}
-      >
-        <FreeLandLayer data={COLLECTION} />
-      </MapContainer>
-      <SelectionProbe />
-    </SelectedFeatureProvider>,
-  );
-
-  return { mapRef, view };
-}
-
-function candidatePaths(map: LeafletMap): Path[] {
-  const layers: Layer[] = [];
-  map.eachLayer((layer) => {
-    if (layer instanceof LeafletGeoJSON) {
-      layers.push(...layer.getLayers());
-    }
-  });
-
-  return layers as Path[];
+  return renderOnMap(<FreeLandLayer data={COLLECTION} />);
 }
 
 describe('FreeLandLayer', () => {
@@ -110,7 +66,7 @@ describe('FreeLandLayer', () => {
 
   it('highlights on hover with the transparent gray style and reverts on mouseout', () => {
     const { mapRef } = renderLayer();
-    const path = candidatePaths(mapRef.current!)[0];
+    const path = geoJsonPaths(mapRef.current!)[0];
 
     path.fire('mouseover');
 
@@ -123,26 +79,28 @@ describe('FreeLandLayer', () => {
     expect(path.options.fillOpacity).toBe(0.15);
   });
 
-  it('stores the clicked feature in the selection context and keeps the gray style', () => {
+  it('stores the clicked feature in the selection context and keeps the highlighted style', () => {
     const { mapRef, view } = renderLayer();
-    const path = candidatePaths(mapRef.current!)[0];
+    const path = geoJsonPaths(mapRef.current!)[0];
 
     act(() => {
       path.fire('click');
     });
 
-    expect(view.getByTestId('selection').textContent).toBe('way/1');
-    expect(path.options.fillColor).toBe('#9ca3af');
+    expect(view.getByTestId('selection').textContent).toBe('way/1:empty');
+    expect(path.options.fillColor).toBe('#34d399');
+    expect(path.options.fillOpacity).toBe(0.4);
+    expect(path.options.weight).toBe(2);
 
     // The selected polygon must not revert on mouseout.
     path.fire('mouseout');
 
-    expect(path.options.fillColor).toBe('#9ca3af');
+    expect(path.options.fillColor).toBe('#34d399');
   });
 
   it('reverts the previously selected polygon when another one is clicked', () => {
     const { mapRef, view } = renderLayer();
-    const [first, second] = candidatePaths(mapRef.current!);
+    const [first, second] = geoJsonPaths(mapRef.current!);
 
     act(() => {
       first.fire('click');
@@ -151,14 +109,14 @@ describe('FreeLandLayer', () => {
       second.fire('click');
     });
 
-    expect(view.getByTestId('selection').textContent).toBe('way/2');
+    expect(view.getByTestId('selection').textContent).toBe('way/2:empty');
     expect(first.options.fillColor).toBe('#10b981');
-    expect(second.options.fillColor).toBe('#9ca3af');
+    expect(second.options.fillColor).toBe('#34d399');
   });
 
   it('reverts the gray style when the selection is cleared elsewhere', () => {
     const { mapRef, view } = renderLayer();
-    const path = candidatePaths(mapRef.current!)[0];
+    const path = geoJsonPaths(mapRef.current!)[0];
 
     act(() => {
       path.fire('click');

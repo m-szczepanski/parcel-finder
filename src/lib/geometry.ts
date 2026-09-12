@@ -1,5 +1,5 @@
-import { area as turfArea, bbox, centroid, difference, union } from '@turf/turf';
-import type { BBox, Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson';
+import { area as turfArea, booleanIntersects, bbox, centroid } from '@turf/turf';
+import type { BBox } from 'geojson';
 import { LAND_USE_TAG_MAP, MIN_AREA_M2, TAKEN_LAND_USE_TYPES } from '@/lib/config';
 import type {
   CandidateSiteFeature,
@@ -21,12 +21,11 @@ export function classifyLandUse(tags: Record<string, string>): LandUseType {
   return 'unknown';
 }
 
-type PolygonFeature = Feature<Polygon | MultiPolygon>;
 type IndexedBuilding = { feature: RawOsmFeature; box: BBox };
 
 // One derivation pass over the raw viewport data: the building/landuse split
-// feeds both the free-land candidates and the click-time taken-site check, so
-// it happens here once instead of in every consumer (tech doc 3.7).
+// feeds both the free-land candidates and the taken layer (red rendering + the
+// panel), so it happens here once instead of in every consumer.
 export function computeViewportSites(data: RawOsmFeatureCollection): {
   freeLand: CandidateSiteFeatureCollection;
   takenFeatures: RawOsmFeature[];
@@ -42,38 +41,46 @@ export function computeViewportSites(data: RawOsmFeatureCollection): {
     }
   }
 
+  const { freeLand, takenLanduse } = computeSites(
+    { type: 'FeatureCollection', features: landuse },
+    { type: 'FeatureCollection', features: buildings },
+  );
+
   return {
-    freeLand: computeFreeLand(
-      { type: 'FeatureCollection', features: landuse },
-      { type: 'FeatureCollection', features: buildings },
-    ),
-    // Taken sites for the click check: buildings first, then taken land
-    // polygons — the order matters when polygons overlap.
-    takenFeatures: [
-      ...buildings,
-      ...landuse.filter((feature) => TAKEN_LAND_USE_TYPES.has(classifyLandUse(feature.properties.tags))),
-    ],
+    freeLand,
+    // Buildings first, so land polygons stack above them within the red layer.
+    takenFeatures: [...buildings, ...takenLanduse],
   };
 }
 
-export function computeFreeLand(
+// Per-landuse-polygon classification: 'empty' produces a green candidate,
+// 'taken' promotes the raw polygon to the taken output, 'sliver' drops it.
+type SiteOutcome =
+  | { kind: 'empty'; candidate: CandidateSiteFeature }
+  | { kind: 'taken'; feature: RawOsmFeature }
+  | { kind: 'sliver' };
+
+export function computeSites(
   landuse: RawOsmFeatureCollection,
   buildings: RawOsmFeatureCollection,
-): CandidateSiteFeatureCollection {
-  // Pre-computed building bboxes keep the expensive union/difference calls rare.
+): { freeLand: CandidateSiteFeatureCollection; takenLanduse: RawOsmFeature[] } {
+  // Pre-computed building bboxes keep the containment checks cheap.
   const buildingIndex: IndexedBuilding[] = buildings.features.map((feature) => ({
     feature,
     box: bbox(feature),
   }));
 
   const candidates: CandidateSiteFeature[] = [];
+  const takenLanduse: RawOsmFeature[] = [];
 
   for (const feature of landuse.features) {
     try {
-      const candidate = toCandidateSite(feature, buildingIndex);
+      const outcome = classifySite(feature, buildingIndex);
 
-      if (candidate) {
-        candidates.push(candidate);
+      if (outcome.kind === 'empty') {
+        candidates.push(outcome.candidate);
+      } else if (outcome.kind === 'taken') {
+        takenLanduse.push(outcome.feature);
       }
     } catch (error) {
       // One invalid OSM polygon must not break the batch — log and skip it.
@@ -81,72 +88,53 @@ export function computeFreeLand(
     }
   }
 
-  return { type: 'FeatureCollection', features: candidates };
-}
-
-function toCandidateSite(
-  feature: RawOsmFeature,
-  buildingIndex: IndexedBuilding[],
-): CandidateSiteFeature | null {
-  const landuseType = classifyLandUse(feature.properties.tags);
-
-  if (TAKEN_LAND_USE_TYPES.has(landuseType)) {
-    return null;
-  }
-
-  const landuseBox = bbox(feature);
-  const overlapping = buildingIndex
-    .filter((building) => boxesIntersect(landuseBox, building.box))
-    .map((building) => building.feature);
-
-  const remainder = subtractBuildings(feature, overlapping);
-
-  if (!remainder) {
-    return null; // fully covered by buildings
-  }
-
-  const area = turfArea(remainder);
-
-  if (area < MIN_AREA_M2) {
-    return null; // sliver
-  }
-
-  const [longitude, latitude] = centroid(remainder).geometry.coordinates;
-
   return {
-    type: 'Feature',
-    id: feature.properties.id,
-    properties: {
-      id: feature.properties.id,
-      landuseType,
-      area,
-      status: 'empty',
-      centroid: [longitude, latitude],
-    },
-    geometry: remainder.geometry,
+    freeLand: { type: 'FeatureCollection', features: candidates },
+    takenLanduse,
   };
 }
 
-function subtractBuildings(landuse: RawOsmFeature, overlapping: RawOsmFeature[]): PolygonFeature | null {
-  if (overlapping.length === 0) {
-    return landuse;
+function classifySite(feature: RawOsmFeature, buildingIndex: IndexedBuilding[]): SiteOutcome {
+  const landuseType = classifyLandUse(feature.properties.tags);
+
+  if (TAKEN_LAND_USE_TYPES.has(landuseType)) {
+    return { kind: 'taken', feature };
   }
 
-  // Turf 7: union() takes a FeatureCollection and requires at least two geometries.
-  const buildingUnion =
-    overlapping.length === 1 ? overlapping[0] : union(toFeatureCollection(overlapping));
+  // Step-12 product decision: any building on the polygon takes the whole
+  // polygon — a single barn marks the entire field taken (no remainder). The
+  // bbox check is a prefilter only; the precise intersection test runs on the
+  // few matched pairs so bbox-corner near-misses stay empty.
+  const landuseBox = bbox(feature);
+  const bboxMatched = buildingIndex.filter((building) => boxesIntersect(landuseBox, building.box));
 
-  if (!buildingUnion) {
-    return landuse;
+  if (bboxMatched.some((building) => booleanIntersects(feature, building.feature))) {
+    return { kind: 'taken', feature };
   }
 
-  // Turf 7: difference() takes a FeatureCollection (base polygon first); it returns
-  // null when the building union fully covers the landuse polygon.
-  return difference(toFeatureCollection([landuse, buildingUnion]));
-}
+  const area = turfArea(feature);
 
-function toFeatureCollection(features: readonly PolygonFeature[]): FeatureCollection<Polygon | MultiPolygon> {
-  return { type: 'FeatureCollection', features: [...features] };
+  if (area < MIN_AREA_M2) {
+    return { kind: 'sliver' };
+  }
+
+  const [longitude, latitude] = centroid(feature).geometry.coordinates;
+
+  return {
+    kind: 'empty',
+    candidate: {
+      type: 'Feature',
+      id: feature.properties.id,
+      properties: {
+        id: feature.properties.id,
+        landuseType,
+        area,
+        status: 'empty',
+        centroid: [longitude, latitude],
+      },
+      geometry: feature.geometry,
+    },
+  };
 }
 
 function boxesIntersect(a: BBox, b: BBox): boolean {

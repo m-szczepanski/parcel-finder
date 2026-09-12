@@ -1,10 +1,12 @@
 import { act, fireEvent, render } from '@testing-library/react';
 import { latLng } from 'leaflet';
 import type { Map as LeafletMap } from 'leaflet';
-import { SelectedFeatureProvider, useSelectedFeature } from '@/hooks/useSelectedFeature';
+import { SelectedFeatureProvider } from '@/hooks/useSelectedFeature';
 import { DEFAULT_VIEW, saveBasemap } from '@/lib/mapState';
+import { geoJsonPaths } from '@/test/leafletLayers';
 import { createMemoryStorage } from '@/test/memoryStorage';
-import type { RawOsmFeature } from '@/types/geo';
+import { SelectionProbe } from '@/test/selectionProbe';
+import type { CandidateSiteFeatureCollection, RawOsmFeature } from '@/types/geo';
 import { MapView } from './MapView';
 
 // Covers [52.1, 21.0] .. [52.2, 21.1]
@@ -26,17 +28,28 @@ const TAKEN_BUILDING: RawOsmFeature = {
   },
 };
 
-function SelectionProbe() {
-  const { selectedFeature } = useSelectedFeature();
-
-  return (
-    <span data-testid="selection">
-      {selectedFeature
-        ? `${selectedFeature.properties.id}:${selectedFeature.properties.status}`
-        : 'none'}
-    </span>
-  );
-}
+const FREE_LAND: CandidateSiteFeatureCollection = {
+  type: 'FeatureCollection',
+  features: [
+    {
+      type: 'Feature',
+      id: 'way/grass-1',
+      properties: { id: 'way/grass-1', landuseType: 'grass', area: 1_000_000, status: 'empty' },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [22.0, 53.0],
+            [22.1, 53.0],
+            [22.1, 53.1],
+            [22.0, 53.1],
+            [22.0, 53.0],
+          ],
+        ],
+      },
+    },
+  ],
+};
 
 describe('MapView', () => {
   // The test environment has no localStorage; mapState reads/writes
@@ -84,7 +97,64 @@ describe('MapView', () => {
     expect(attribution?.textContent).toContain('OpenStreetMap');
   });
 
-  it('selects a taken site on a bare-map click inside it and clears on a miss', () => {
+  it('renders taken features as red paths below the free-land layer', () => {
+    const { container } = render(
+      <SelectedFeatureProvider>
+        <MapView freeLand={FREE_LAND} takenFeatures={[TAKEN_BUILDING]} />
+      </SelectedFeatureProvider>,
+    );
+
+    // Both layers share one SVG renderer, so DOM order is stacking order:
+    // taken first (below), free-land second (on top).
+    const paths = container.querySelectorAll('path.leaflet-interactive');
+
+    expect(paths).toHaveLength(2);
+    expect(paths[0].getAttribute('stroke')).toBe('#dc2626');
+    expect(paths[1].getAttribute('stroke')).toBe('#059669');
+  });
+
+  // A real bubbling DOM click goes through Leaflet's own propagation: the layer
+  // must consume it (stopPropagation) so the map-level deselect never fires —
+  // otherwise the panel would open and instantly close in the browser.
+  it('keeps the selection when a real DOM click lands on a taken path', () => {
+    const { container, getByTestId } = render(
+      <SelectedFeatureProvider>
+        <MapView takenFeatures={[TAKEN_BUILDING]} />
+        <SelectionProbe />
+      </SelectedFeatureProvider>,
+    );
+
+    const path = container.querySelector('path.leaflet-interactive');
+
+    expect(path).toBeTruthy();
+
+    act(() => {
+      path!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    expect(getByTestId('selection').textContent).toBe('way/b-1:taken');
+  });
+
+  it('keeps the selection when a real DOM click lands on a free-land path', () => {
+    const { container, getByTestId } = render(
+      <SelectedFeatureProvider>
+        <MapView freeLand={FREE_LAND} />
+        <SelectionProbe />
+      </SelectedFeatureProvider>,
+    );
+
+    const path = container.querySelector('path.leaflet-interactive');
+
+    expect(path).toBeTruthy();
+
+    act(() => {
+      path!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    expect(getByTestId('selection').textContent).toBe('way/grass-1:empty');
+  });
+
+  it('selects a taken site from the red layer and clears on a bare-map click', () => {
     const mapRef: { current: LeafletMap | null } = { current: null };
     const { getByTestId } = render(
       <SelectedFeatureProvider>
@@ -99,9 +169,10 @@ describe('MapView', () => {
     );
 
     const map = mapRef.current!;
+    const [taken] = geoJsonPaths(map);
 
     act(() => {
-      map.fire('click', { type: 'click', latlng: latLng(52.15, 21.05) });
+      taken.fire('click');
     });
 
     expect(getByTestId('selection').textContent).toBe('way/b-1:taken');

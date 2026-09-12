@@ -30,12 +30,13 @@ function SheetOverlay({
   return (
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
-        className={cn(
-          // Above Leaflet's pane/control z-indexes (up to 1000) so the sheet and
-          // its overlay sit in front of the map.
-          'fixed inset-0 z-[1001] bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0',
-          className,
-        )}
+      className={cn(
+        // Above Leaflet's pane/control z-indexes (up to 1000) so the sheet and
+        // its overlay sit in front of the map. Light dim only — no backdrop
+        // blur, so the map (and the selected site on it) stays crisp.
+        'fixed inset-0 z-[1001] bg-black/10 duration-100 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0',
+        className,
+      )}
       {...props}
     />
   );
