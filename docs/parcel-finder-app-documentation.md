@@ -170,7 +170,7 @@ happy-dom
 1. **Skeleton** — Vite + React + TS project, Tailwind + shadcn/ui set up, Leaflet map rendering with OSM base tiles, centered on the user's geolocation (fallback: last known, then Warsaw).
 2. **Data fetch** — Overpass query wired to map viewport (`moveend`), debounced, gated by minimum zoom.
 3. **Geometry computation** — landuse polygons classified empty vs. taken via Turf (a polygon with any building on it is taken as a whole), rendered as GeoJSON layers (green empty sites, red taken sites).
-4. **Interaction** — transparent-gray hover highlight on empty sites only (taken sites get no hover effect); clicking a site opens a right-side panel (shadcn `Sheet`) with land-use type, computed area, optional nearest address; clicked taken sites show a "taken" notice plus their available properties.
+4. **Interaction** — transparent-gray hover highlight on empty sites only (taken sites get no hover effect); a clicked site keeps a highlighted outline (emerald for empty, red for taken) while its right-side panel (shadcn `Sheet`) is open — the panel dims the map lightly without blurring, and shows land-use type, computed area, optional nearest address; clicked taken sites show a "taken" notice plus their available properties.
 5. **Polish** — satellite imagery toggle, bbox-based caching, loading/error states, basic empty-state handling.
 6. **Stretch goals** — subdivision suggestion logic, saved/favorited sites (local storage), shareable links to a given map view.
 

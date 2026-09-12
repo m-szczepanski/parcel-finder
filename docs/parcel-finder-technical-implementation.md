@@ -197,8 +197,11 @@ Key points:
 - Hovering updates the layer style only — it deliberately does **not** touch shared state or the
   panel (product decision: the panel opens on click).
 - `selectFeature` comes from `useSelectedFeature`, a small Context-backed hook that holds the
-  selected feature and drives the side `Sheet` (open/close + content). The selected polygon keeps
-  the gray style while selected; deselecting reverts it.
+  selected feature and drives the side `Sheet` (open/close + content). While selected, the
+  clicked polygon keeps a distinct highlighted style (weight-2 border, brighter fill — emerald
+  for empty sites, red for taken sites), shared with the taken layer through
+  `useSelectedSiteStyle`; deselecting reverts it. The sheet's map overlay is a light dim only
+  — no backdrop blur, so the selected site stays crisp.
 - Features carry a `status` (`'empty'` | `'taken'`) so `SiteDetails` can show the taken notice
   when applicable.
 - Clicks on taken sites are consumed by the red layer (section 3.7); clicks that miss every

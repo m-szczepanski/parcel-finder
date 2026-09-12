@@ -1,7 +1,6 @@
-import { useEffect, useRef } from 'react';
 import { DomEvent, type Path, type PathOptions } from 'leaflet';
 import { GeoJSON } from 'react-leaflet';
-import { useSelectedFeature } from '@/hooks/useSelectedFeature';
+import { useSelectedSiteStyle } from '@/hooks/useSelectedSiteStyle';
 import type { CandidateSiteFeature, CandidateSiteFeatureCollection } from '@/types/geo';
 
 // Step-04 spec: subtle green fill at 0.15 opacity with a visible border.
@@ -14,8 +13,7 @@ const DEFAULT_STYLE: PathOptions = {
 
 // Product spec: hovering an empty site shows a transparent gray fill with gray
 // borders (Tailwind gray-400). Hover is style-only — no shared state changes;
-// the panel opens on click instead. A selected polygon keeps this style until
-// it is deselected.
+// the panel opens on click instead.
 const HOVER_STYLE: PathOptions = {
   color: '#9ca3af',
   fillColor: '#9ca3af',
@@ -23,29 +21,18 @@ const HOVER_STYLE: PathOptions = {
   weight: 1,
 };
 
-// The layer currently styled as selected, kept with its feature id so the
-// revert effect can tell when the styled layer no longer matches the
-// selection held in context.
-type SelectedLayer = { id: string; layer: Path };
-
-type FreeLandLayerProps = {
-  data: CandidateSiteFeatureCollection;
+// The selected site reads at a glance even next to hovered ones: darker
+// emerald border, brighter fill (Tailwind emerald-700/400).
+const SELECTED_STYLE: PathOptions = {
+  color: '#047857',
+  fillColor: '#34d399',
+  fillOpacity: 0.4,
+  weight: 2,
 };
 
-export function FreeLandLayer({ data }: FreeLandLayerProps) {
-  const { selectedFeature, selectFeature } = useSelectedFeature();
-  const selectedLayerRef = useRef<SelectedLayer | null>(null);
-
-  // Deselection happens outside this component (bare-map click, taken-site
-  // click) — revert the gray style once the selection no longer matches.
-  useEffect(() => {
-    const selection = selectedLayerRef.current;
-
-    if (selection && selection.id !== selectedFeature?.properties.id) {
-      selection.layer.setStyle(DEFAULT_STYLE);
-      selectedLayerRef.current = null;
-    }
-  }, [selectedFeature]);
+export function FreeLandLayer({ data }: { data: CandidateSiteFeatureCollection }) {
+  const { selectedFeature, selectFeature, isStyledSelection, styleSelection } =
+    useSelectedSiteStyle(DEFAULT_STYLE, SELECTED_STYLE);
 
   return (
     <GeoJSON
@@ -54,23 +41,22 @@ export function FreeLandLayer({ data }: FreeLandLayerProps) {
       onEachFeature={(rawFeature, layer) => {
         const feature = rawFeature as CandidateSiteFeature;
         const path = layer as Path;
-        const isSelectionStyled = () => selectedLayerRef.current?.layer === path;
+        const { id } = feature.properties;
 
-        // Remounts (new data key) must restore the gray style on the polygon
-        // that is still selected in the context.
-        if (selectedFeature?.properties.id === feature.properties.id) {
-          selectedLayerRef.current = { id: feature.properties.id, layer: path };
-          path.setStyle(HOVER_STYLE);
+        // Remounts (new data key) must restore the selected style on the
+        // polygon that is still selected in the context.
+        if (selectedFeature?.properties.id === id) {
+          styleSelection(path, id);
         }
 
         path.on({
           mouseover: () => {
-            if (!isSelectionStyled()) {
+            if (!isStyledSelection(path)) {
               path.setStyle(HOVER_STYLE);
             }
           },
           mouseout: () => {
-            if (!isSelectionStyled()) {
+            if (!isStyledSelection(path)) {
               path.setStyle(DEFAULT_STYLE);
             }
           },
@@ -78,12 +64,7 @@ export function FreeLandLayer({ data }: FreeLandLayerProps) {
             // Keep the click from reaching the map-level deselect handler.
             DomEvent.stopPropagation(event);
 
-            if (!isSelectionStyled()) {
-              selectedLayerRef.current?.layer.setStyle(DEFAULT_STYLE);
-              selectedLayerRef.current = { id: feature.properties.id, layer: path };
-              path.setStyle(HOVER_STYLE);
-            }
-
+            styleSelection(path, id);
             selectFeature(feature);
           },
         });

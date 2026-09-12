@@ -79,7 +79,7 @@ describe('FreeLandLayer', () => {
     expect(path.options.fillOpacity).toBe(0.15);
   });
 
-  it('stores the clicked feature in the selection context and keeps the gray style', () => {
+  it('stores the clicked feature in the selection context and keeps the highlighted style', () => {
     const { mapRef, view } = renderLayer();
     const path = geoJsonPaths(mapRef.current!)[0];
 
@@ -88,12 +88,14 @@ describe('FreeLandLayer', () => {
     });
 
     expect(view.getByTestId('selection').textContent).toBe('way/1:empty');
-    expect(path.options.fillColor).toBe('#9ca3af');
+    expect(path.options.fillColor).toBe('#34d399');
+    expect(path.options.fillOpacity).toBe(0.4);
+    expect(path.options.weight).toBe(2);
 
     // The selected polygon must not revert on mouseout.
     path.fire('mouseout');
 
-    expect(path.options.fillColor).toBe('#9ca3af');
+    expect(path.options.fillColor).toBe('#34d399');
   });
 
   it('reverts the previously selected polygon when another one is clicked', () => {
@@ -109,7 +111,7 @@ describe('FreeLandLayer', () => {
 
     expect(view.getByTestId('selection').textContent).toBe('way/2:empty');
     expect(first.options.fillColor).toBe('#10b981');
-    expect(second.options.fillColor).toBe('#9ca3af');
+    expect(second.options.fillColor).toBe('#34d399');
   });
 
   it('reverts the gray style when the selection is cleared elsewhere', () => {

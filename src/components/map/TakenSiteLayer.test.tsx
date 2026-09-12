@@ -1,4 +1,4 @@
-import { act } from '@testing-library/react';
+import { act, fireEvent } from '@testing-library/react';
 import { geoJsonPaths, renderOnMap } from '@/test/leafletLayers';
 import type { RawOsmFeature } from '@/types/geo';
 import { TakenSiteLayer } from './TakenSiteLayer';
@@ -61,7 +61,7 @@ describe('TakenSiteLayer', () => {
     expect(path?.getAttribute('fill-opacity')).toBe('0.15');
   });
 
-  it('selects the feature as taken on click', () => {
+  it('selects the feature as taken on click and shows the highlighted style', () => {
     const { mapRef, view } = renderLayer();
     const [building, wood] = geoJsonPaths(mapRef.current!);
 
@@ -70,12 +70,32 @@ describe('TakenSiteLayer', () => {
     });
 
     expect(view.getByTestId('selection').textContent).toBe('way/b-1:taken');
+    expect(building.options.fillColor).toBe('#f87171');
+    expect(building.options.fillOpacity).toBe(0.4);
+    expect(building.options.weight).toBe(2);
 
     act(() => {
       wood.fire('click');
     });
 
     expect(view.getByTestId('selection').textContent).toBe('way/wood-1:taken');
+    expect(building.options.fillColor).toBe('#ef4444');
+    expect(wood.options.fillColor).toBe('#f87171');
+  });
+
+  it('reverts the highlighted style when the selection is cleared elsewhere', () => {
+    const { mapRef, view } = renderLayer();
+    const path = geoJsonPaths(mapRef.current!)[0];
+
+    act(() => {
+      path.fire('click');
+    });
+    fireEvent.click(view.getByText('clear'));
+
+    expect(view.getByTestId('selection').textContent).toBe('none');
+    expect(path.options.fillColor).toBe('#ef4444');
+    expect(path.options.fillOpacity).toBe(0.15);
+    expect(path.options.weight).toBe(1);
   });
 
   it('keeps the red style on hover — no hover effect for taken sites', () => {

@@ -19,9 +19,10 @@ parallel once the core chain (01-05) is done.
 
 Interaction model (product decision): hover highlights **empty** sites only (transparent gray);
 clicking a site opens a side panel from the right — taken sites (buildings, forest, water) show
-a "taken" notice in the same panel instead of any hover effect. Step 12 implemented: taken sites
-are also marked red on the map, and landuse polygons containing buildings count as taken as a
-whole (no green remainder with a hole).
+a "taken" notice in the same panel instead of any hover effect. The selected site keeps a
+highlighted outline (emerald for empty, red for taken) and the panel dims the map lightly
+without blurring. Step 12 implemented: taken sites are also marked red on the map, and landuse
+polygons containing buildings count as taken as a whole (no green remainder with a hole).
 
 ## Status
 
