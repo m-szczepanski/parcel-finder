@@ -41,14 +41,10 @@ const LAND_USE_LABELS: Record<LandUseType, string> = {
   unknown: 'Unknown',
 };
 
-// features carry status in their properties, so the union narrows on properties
-// only — this predicate narrows the whole feature.
 function isTakenSite(feature: CandidateSiteFeature | TakenSiteFeature): feature is TakenSiteFeature {
   return feature.properties.status === 'taken';
 }
 
-// What occupies a taken site: buildings by tag, everything else via the shared
-// land-use classification (config TAKEN_LAND_USE_TYPES).
 function occupierLabel(tags: Record<string, string>): string {
   if ('building' in tags) {
     return 'Building';
@@ -63,12 +59,9 @@ type SiteSummary = {
   landUseLabel: string;
   area: number;
   centroid?: [number, number];
-  address?: string;
   osmUrl: string;
 };
 
-// Candidates carry their computed properties from the geometry pass; taken
-// sites only carry raw tags, so their area/centroid are derived here on open.
 function toSummary(feature: CandidateSiteFeature | TakenSiteFeature): SiteSummary {
   const { id } = feature.properties;
   const osmUrl = `https://www.openstreetmap.org/${id}`;
@@ -84,7 +77,7 @@ function toSummary(feature: CandidateSiteFeature | TakenSiteFeature): SiteSummar
     };
   }
 
-  const { landuseType, area, centroid, address } = feature.properties;
+  const { landuseType, area, centroid } = feature.properties;
 
   return {
     id,
@@ -92,7 +85,6 @@ function toSummary(feature: CandidateSiteFeature | TakenSiteFeature): SiteSummar
     landUseLabel: LAND_USE_LABELS[landuseType],
     area,
     centroid,
-    address,
     osmUrl,
   };
 }
@@ -104,7 +96,6 @@ function formatCoordinates([longitude, latitude]: [number, number]): string {
 function propertyRows(summary: SiteSummary): { term: string; detail: string }[] {
   const rows = [{ term: 'Area', detail: formatArea(summary.area) }];
 
-  // Taken sites carry the occupier name in the notice instead (step 05).
   if (!summary.isTaken) {
     rows.unshift({ term: 'Land use', detail: summary.landUseLabel });
   }
@@ -113,19 +104,12 @@ function propertyRows(summary: SiteSummary): { term: string; detail: string }[] 
     rows.push({ term: 'Coordinates', detail: formatCoordinates(summary.centroid) });
   }
 
-  // Nominatim geocoding is deferred (step index, deferred ideas).
-  if (summary.address) {
-    rows.push({ term: 'Address', detail: summary.address });
-  }
-
   return rows;
 }
 
 export function SiteDetails() {
   const { selectedFeature, clearSelection } = useSelectedFeature();
 
-  // Closing clears the selection immediately, but the sheet stays mounted for
-  // the slide-out animation — keep rendering the last selection meanwhile.
   const lastFeatureRef = useRef<SelectedFeatureState>(null);
 
   if (selectedFeature) {

@@ -2,9 +2,10 @@ import {
   clearViewportCache,
   getCachedViewportData,
   makeCacheKey,
-  MAX_CACHE_ENTRIES,
   setCachedViewportData,
 } from './cache';
+
+const MAX_CACHE_ENTRIES = 50;
 
 describe('viewport cache', () => {
   beforeEach(() => {

@@ -82,8 +82,6 @@ export function MapView({
   );
 }
 
-// A click no polygon layer consumed is a bare-map click: the panel closes.
-// Polygon layers stop propagation on their own clicks (tech doc 3.3).
 function DeselectOnMapClick() {
   const { clearSelection } = useSelectedFeature();
 

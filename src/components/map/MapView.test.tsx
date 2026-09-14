@@ -9,7 +9,6 @@ import { SelectionProbe } from '@/test/selectionProbe';
 import type { CandidateSiteFeatureCollection, RawOsmFeature } from '@/types/geo';
 import { MapView } from './MapView';
 
-// Covers [52.1, 21.0] .. [52.2, 21.1]
 const TAKEN_BUILDING: RawOsmFeature = {
   type: 'Feature',
   id: 'way/b-1',
@@ -52,8 +51,6 @@ const FREE_LAND: CandidateSiteFeatureCollection = {
 };
 
 describe('MapView', () => {
-  // The test environment has no localStorage; mapState reads/writes
-  // window.localStorage by default, so a memory stand-in is installed here.
   const storage = createMemoryStorage();
 
   beforeAll(() => {
@@ -104,8 +101,6 @@ describe('MapView', () => {
       </SelectedFeatureProvider>,
     );
 
-    // Both layers share one SVG renderer, so DOM order is stacking order:
-    // taken first (below), free-land second (on top).
     const paths = container.querySelectorAll('path.leaflet-interactive');
 
     expect(paths).toHaveLength(2);
@@ -113,9 +108,6 @@ describe('MapView', () => {
     expect(paths[1].getAttribute('stroke')).toBe('#059669');
   });
 
-  // A real bubbling DOM click goes through Leaflet's own propagation: the layer
-  // must consume it (stopPropagation) so the map-level deselect never fires —
-  // otherwise the panel would open and instantly close in the browser.
   it('keeps the selection when a real DOM click lands on a taken path', () => {
     const { container, getByTestId } = render(
       <SelectedFeatureProvider>
@@ -191,7 +183,6 @@ describe('MapView', () => {
       </SelectedFeatureProvider>,
     );
 
-    // Clicking the already-active toggle must not persist anything.
     fireEvent.click(getByRole('button', { name: 'Map' }));
     expect(window.localStorage.getItem('parcel-finder:basemap')).toBeNull();
 

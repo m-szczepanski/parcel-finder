@@ -225,8 +225,6 @@ describe('fetchOverpassData', () => {
       vi.stubGlobal('fetch', fetchMock);
 
       const pending = fetchOverpassData(BOUNDS);
-      // Attach the rejection handler before the timers run, or the rejection is
-      // briefly unhandled while advanceTimersByTimeAsync is in flight.
       const rejection = expect(pending).rejects.toThrow('503');
       await vi.advanceTimersByTimeAsync(2_000);
 
