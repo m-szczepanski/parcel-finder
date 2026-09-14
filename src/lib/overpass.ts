@@ -14,8 +14,6 @@ const OVERPASS_RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
 const POLYGON_TAG_KEYS = QUERY_TAGS.map((tag) => tag.key);
 
 function tagClause({ key, values }: QueryTag): string {
-  // Equality is the cheaper Overpass filter; regex only when several values
-  // share one key.
   if (!values) {
     return `way["${key}"]`;
   }
@@ -64,8 +62,6 @@ function isRetryable(error: unknown): boolean {
   return status !== undefined && OVERPASS_RETRYABLE_STATUSES.has(status);
 }
 
-// Hand-rolled AbortSignal.any replacement — not every browser exposes it, and a
-// missing static would fail every single request.
 function combineSignals(signals: AbortSignal[]): AbortSignal {
   const controller = new AbortController();
 
@@ -87,8 +83,6 @@ export async function fetchOverpassData(
   try {
     return await requestOverpass(bounds, 0, signal);
   } catch (error) {
-    // The public instances throttle heavy clients — one backed-off retry on the
-    // mirror endpoint recovers transient 429/5xx instead of failing the viewport.
     if (signal?.aborted || !isRetryable(error)) {
       throw error;
     }
@@ -137,7 +131,6 @@ export function overpassToGeoJSON(elements: OverpassElement[]): RawOsmFeatureCol
 }
 
 function wayToPolygonFeature(element: OverpassElement): RawOsmFeature | null {
-  // Relations are skipped for v1: multipolygon members are not resolved (documented limitation).
   if (element.type !== 'way' || !element.geometry) {
     return null;
   }

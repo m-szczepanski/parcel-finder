@@ -23,9 +23,6 @@ export function classifyLandUse(tags: Record<string, string>): LandUseType {
 
 type IndexedBuilding = { feature: RawOsmFeature; box: BBox };
 
-// One derivation pass over the raw viewport data: the building/landuse split
-// feeds both the free-land candidates and the taken layer (red rendering + the
-// panel), so it happens here once instead of in every consumer.
 export function computeViewportSites(data: RawOsmFeatureCollection): {
   freeLand: CandidateSiteFeatureCollection;
   takenFeatures: RawOsmFeature[];
@@ -48,13 +45,10 @@ export function computeViewportSites(data: RawOsmFeatureCollection): {
 
   return {
     freeLand,
-    // Buildings first, so land polygons stack above them within the red layer.
     takenFeatures: [...buildings, ...takenLanduse],
   };
 }
 
-// Per-landuse-polygon classification: 'empty' produces a green candidate,
-// 'taken' promotes the raw polygon to the taken output, 'sliver' drops it.
 type SiteOutcome =
   | { kind: 'empty'; candidate: CandidateSiteFeature }
   | { kind: 'taken'; feature: RawOsmFeature }
@@ -64,7 +58,6 @@ export function computeSites(
   landuse: RawOsmFeatureCollection,
   buildings: RawOsmFeatureCollection,
 ): { freeLand: CandidateSiteFeatureCollection; takenLanduse: RawOsmFeature[] } {
-  // Pre-computed building bboxes keep the containment checks cheap.
   const buildingIndex: IndexedBuilding[] = buildings.features.map((feature) => ({
     feature,
     box: bbox(feature),
@@ -83,7 +76,6 @@ export function computeSites(
         takenLanduse.push(outcome.feature);
       }
     } catch (error) {
-      // One invalid OSM polygon must not break the batch — log and skip it.
       console.warn(`[geometry] skipping invalid landuse polygon ${feature.properties.id}`, error);
     }
   }
@@ -101,10 +93,6 @@ function classifySite(feature: RawOsmFeature, buildingIndex: IndexedBuilding[]):
     return { kind: 'taken', feature };
   }
 
-  // Step-12 product decision: any building on the polygon takes the whole
-  // polygon — a single barn marks the entire field taken (no remainder). The
-  // bbox check is a prefilter only; the precise intersection test runs on the
-  // few matched pairs so bbox-corner near-misses stay empty.
   const landuseBox = bbox(feature);
   const bboxMatched = buildingIndex.filter((building) => boxesIntersect(landuseBox, building.box));
 

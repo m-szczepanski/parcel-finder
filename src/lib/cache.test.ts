@@ -5,7 +5,6 @@ import {
   setCachedViewportData,
 } from './cache';
 
-// Mirrors the module-private cap; the eviction test below relies on it.
 const MAX_CACHE_ENTRIES = 50;
 
 describe('viewport cache', () => {

@@ -6,11 +6,7 @@ import { getCachedViewportData, setCachedViewportData, snapBounds } from '@/lib/
 import type { RawOsmFeatureCollection, ViewportBounds } from '@/types/geo';
 
 const DEBOUNCE_MS = 500;
-// Once an area is fetched, it keeps serving while the viewport stays within half a
-// viewport of the fetched bounds — panning around locally must feel instant.
 const REFETCH_MARGIN_RATIO = 0.5;
-// Rate-limit backoff (tech doc section 5): after a failure, automatic refetches are
-// skipped for an exponentially growing window so we stop hammering a busy Overpass.
 const BASE_BACKOFF_MS = 2000;
 const MAX_BACKOFF_MS = 30_000;
 
@@ -40,8 +36,6 @@ type ViewportDataResult = {
   loading: boolean;
   error: Error | null;
   belowMinZoom: boolean;
-  // Consecutive failed fetches, reset on the first success — the App uses it to
-  // switch the toast to a calmer "waiting" message once Overpass looks rate-limited.
   failures: number;
   version: number;
 };
@@ -74,8 +68,6 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
   const [error, setError] = useState<Error | null>(null);
   const [belowMinZoom, setBelowMinZoom] = useState(true);
   const [failures, setFailures] = useState(0);
-  // Bumped on every data change — react-leaflet's GeoJSON ignores data prop
-  // updates after creation, so consumers key the layer on this counter.
   const [version, setVersion] = useState(0);
   const requestIdRef = useRef(0);
   const fetchedBoundsRef = useRef<ViewportBounds | null>(null);
@@ -90,9 +82,6 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
 
     let timer: ReturnType<typeof setTimeout> | undefined;
 
-    // Retire any superseded in-flight request: it can neither overwrite valid
-    // data nor surface its abort as an error, and Overpass allows only a couple
-    // of concurrent requests per client.
     const retireInFlight = () => {
       abortRef.current?.abort();
       requestIdRef.current += 1;
@@ -129,8 +118,6 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       const bounds = readBounds(map);
       setBelowMinZoom(false);
 
-      // The viewport is still covered by the last successful fetch — keep the current
-      // polygons on screen instead of waiting on another Overpass round-trip.
       if (isCoveredByFetch(fetchedBoundsRef.current, bounds)) {
         retireInFlight();
         setLoading(false);
@@ -138,9 +125,6 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
         return;
       }
 
-      // Fetch the grid-snapped bbox instead of the raw viewport: equal snapped
-      // bboxes share one cache entry, so returning to an area costs no network
-      // round-trip (docs section 3.4).
       const snapped = snapBounds(bounds);
 
       const cached = getCachedViewportData(snapped);
@@ -154,9 +138,6 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
         return;
       }
 
-      // Rate-limit backoff: skip the automatic refetch while the window is active so
-      // a busy Overpass isn't pounded; the next user pan after it lapses retries
-      // naturally. The last successful layer stays visible meanwhile.
       if (Date.now() < backoffUntilRef.current) {
         return;
       }
@@ -165,8 +146,6 @@ export function useViewportData(map: LeafletMap | null): ViewportDataResult {
       setLoading(true);
       setError(null);
 
-      // Overpass allows only a couple of concurrent requests per client — abort the
-      // superseded in-flight one instead of leaving it queueing.
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;

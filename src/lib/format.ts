@@ -1,4 +1,3 @@
-// One hectare = 10,000 m². Below the threshold areas read as m², above as ha.
 const HECTARE_M2 = 10_000;
 
 const m2Format = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });

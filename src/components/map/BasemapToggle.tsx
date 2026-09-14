@@ -14,7 +14,6 @@ type BasemapToggleProps = {
 };
 
 export function BasemapToggle({ value, onChange }: BasemapToggleProps) {
-  // Keep Leaflet from turning clicks on the control into map clicks.
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

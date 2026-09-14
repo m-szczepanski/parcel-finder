@@ -151,7 +151,6 @@ describe('useViewportData', () => {
     });
     await act(async () => {});
 
-    // The cleared fetched bounds must not suppress the refetch after zooming back in.
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.current.belowMinZoom).toBe(false);
   });
@@ -231,7 +230,6 @@ describe('useViewportData', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.current.version).toBe(2);
 
-    // Pan back to the first area — same grid cells, so the cache serves it.
     act(() => {
       map.setBounds(52.1, 21.05, 52.2, 21.15);
       map.emit('moveend');
@@ -366,7 +364,6 @@ describe('useViewportData', () => {
 
     expect(result.current.data.features[0].id).toBe('way/1');
 
-    // Pan out beyond the margin — request B starts and hangs in flight.
     act(() => {
       map.setBounds(52.1, 21.36, 52.2, 21.46);
       map.emit('moveend');
@@ -375,7 +372,6 @@ describe('useViewportData', () => {
       vi.advanceTimersByTime(DEBOUNCE_MS);
     });
 
-    // Pan back into the covered area before B completes.
     act(() => {
       map.setBounds(52.1, 21.05, 52.2, 21.15);
       map.emit('moveend');
@@ -384,7 +380,6 @@ describe('useViewportData', () => {
       vi.advanceTimersByTime(DEBOUNCE_MS);
     });
 
-    // B finally resolves with different data — it must not overwrite the viewport.
     act(() => {
       releaseB({ ok: true, status: 200, json: async () => ({ elements: [farWay] }) });
     });
@@ -428,7 +423,6 @@ describe('useViewportData', () => {
     expect(result.current.failures).toBe(1);
     expect(result.current.error).toBeInstanceOf(Error);
 
-    // The automatic refetch during the backoff window is skipped.
     act(() => {
       map.setBounds(52.1, 21.36, 52.2, 21.46);
       map.emit('moveend');
@@ -458,7 +452,6 @@ describe('useViewportData', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(result.current.failures).toBe(1);
 
-    // Wait out the backoff window, then a pan retries.
     act(() => {
       vi.advanceTimersByTime(2000);
     });

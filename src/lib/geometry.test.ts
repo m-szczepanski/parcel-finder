@@ -33,7 +33,6 @@ function collection(features: RawOsmFeature[]): RawOsmFeatureCollection {
   return { type: 'FeatureCollection', features };
 }
 
-// ~1.24M m² square (0.01° per side)
 const LANDUSE_RING = ring(0, 0, 0.01, 0.01);
 const LANDUSE = polygonFeature('way/land-1', { landuse: 'residential' }, LANDUSE_RING);
 
@@ -48,7 +47,6 @@ describe('computeSites', () => {
     const { freeLand, takenLanduse } = computeSites(collection([LANDUSE]), collection([building]));
 
     expect(freeLand.features).toHaveLength(0);
-    // Taken as a whole — the raw polygon, no hole punched out.
     expect(takenLanduse.map((feature) => feature.id)).toEqual(['way/land-1']);
     expect(takenLanduse[0].geometry).toEqual({ type: 'Polygon', coordinates: [LANDUSE_RING] });
   });
@@ -85,9 +83,6 @@ describe('computeSites', () => {
   });
 
   it('keeps a landuse polygon empty when the building only shares its bbox', () => {
-    // L-shaped polygon with an empty notch in the top-right corner: the
-    // building sits inside the notch, so the bboxes intersect but the
-    // geometries do not — the polygon must stay a candidate.
     const lShaped = polygonFeature('way/l-shape', { landuse: 'farmland' }, [
       [0, 0],
       [0.01, 0],
@@ -113,7 +108,6 @@ describe('computeSites', () => {
   });
 
   it('discards slivers below MIN_AREA_M2', () => {
-    // ~4.9 m² square (0.00002° per side)
     const tiny = polygonFeature('way/tiny', { landuse: 'grass' }, ring(0, 0, 0.00002, 0.00002));
 
     const { freeLand, takenLanduse } = computeSites(collection([tiny, LANDUSE]), collection([]));
@@ -151,7 +145,6 @@ describe('computeSites', () => {
       ring(2, 2, 2.01, 2.01),
     );
     const quarry = polygonFeature('way/quarry', { landuse: 'quarry' }, ring(4, 4, 4.01, 4.01));
-    // Co-tagged park: cover/amenity precedence must exclude it despite the grass zoning tag.
     const coTaggedPark = polygonFeature(
       'way/park-grass',
       { landuse: 'grass', leisure: 'park' },
@@ -170,8 +163,6 @@ describe('computeSites', () => {
 
   it('skips an invalid polygon without breaking the batch', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    // Null coordinates tear the bbox measurement up — the try/catch must skip
-    // the feature and keep the batch going.
     const invalid = polygonFeature('way/broken', { landuse: 'residential' }, [
       [0, 0],
       [0.01, 0],
@@ -238,9 +229,6 @@ describe('classifyLandUse', () => {
     expect(classifyLandUse(tags)).toBe(expected);
   });
 
-  // Physical cover/amenity must beat zoning: a wood or park co-tagged with
-  // grass/farmland landuse is still taken (measured: 11 such features in one
-  // Warsaw viewport).
   it('prefers physical cover and amenity tags over landuse zoning', () => {
     expect(classifyLandUse({ landuse: 'residential', natural: 'wood' })).toBe('forest');
     expect(classifyLandUse({ landuse: 'grass', leisure: 'park' })).toBe('park');
@@ -261,8 +249,6 @@ describe('computeViewportSites', () => {
       collection([forest, building, meadow]),
     );
 
-    // The built-on meadow is taken as a whole (step-12 product decision), so
-    // nothing stays a free candidate; buildings come first in the taken output.
     expect(freeLand.features).toHaveLength(0);
     expect(takenFeatures.map((feature) => feature.id)).toEqual([
       'way/b-1',

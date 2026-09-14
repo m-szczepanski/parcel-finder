@@ -6,7 +6,6 @@ import { MapContainer } from 'react-leaflet';
 import { SelectedFeatureProvider } from '@/hooks/useSelectedFeature';
 import { SelectionProbe } from '@/test/selectionProbe';
 
-// Every sub-layer of every GeoJSON layer on the map, as clickable Path objects.
 export function geoJsonPaths(map: LeafletMap): Path[] {
   const layers: Layer[] = [];
   map.eachLayer((layer) => {
@@ -18,8 +17,6 @@ export function geoJsonPaths(map: LeafletMap): Path[] {
   return layers as Path[];
 }
 
-// Renders a polygon layer on a real map (center matches the fixtures used in
-// the map tests) together with the selection probe the tests assert against.
 export function renderOnMap(children: ReactNode): {
   mapRef: { current: LeafletMap | null };
   view: RenderResult;

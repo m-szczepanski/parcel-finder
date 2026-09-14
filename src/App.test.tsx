@@ -13,8 +13,6 @@ describe('App', () => {
     const mapElement = container.querySelector('.leaflet-container');
 
     expect(mapElement).toBeTruthy();
-    // A live Leaflet map sets _leaflet_id on its container; a removed one clears it,
-    // so this proves the map survived StrictMode's unmount/remount cycle.
     expect((mapElement as unknown as { _leaflet_id?: number })._leaflet_id).toBeTruthy();
   });
 });

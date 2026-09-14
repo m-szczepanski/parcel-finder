@@ -9,8 +9,6 @@ import { useViewportData } from '@/hooks/useViewportData';
 import { computeViewportSites } from '@/lib/geometry';
 
 const MAP_DATA_ERROR_TOAST_ID = 'map-data-error';
-// After this many consecutive failures assume Overpass is rate-limiting us and
-// stop the error-spam — calm message, the backoff does the actual gate-keeping.
 const RATE_LIMIT_FAILURE_THRESHOLD = 3;
 
 function App() {
@@ -25,7 +23,6 @@ function App() {
           ? 'Overpass seems busy. Waiting a moment before retrying — move the map to retry once the wait passes.'
           : 'Could not load map data. Move the map to retry.';
 
-      // Stable id keeps repeated failures as one toast instead of a stack.
       toast.error(message, {
         id: MAP_DATA_ERROR_TOAST_ID,
       });
